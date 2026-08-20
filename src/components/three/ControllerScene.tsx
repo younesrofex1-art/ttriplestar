@@ -8,9 +8,13 @@ import Controller from './Controller'
 
 interface ControllerSceneProps {
   activeScene: number
+  scrollProgress: number
 }
 
-export default function ControllerScene({ activeScene }: ControllerSceneProps) {
+export default function ControllerScene({
+  activeScene,
+  scrollProgress,
+}: ControllerSceneProps) {
   const [mounted, setMounted] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
 
@@ -24,12 +28,16 @@ export default function ControllerScene({ activeScene }: ControllerSceneProps) {
 
   return (
     <div className="fixed inset-0 z-[10] pointer-events-none w-full h-full">
-      {/* HTML Shimmer loader overlay — smoothly fades out once 3D model is active */}
+      {/* HTML Shimmer loader overlay — fades out once 3D model is active */}
       {!isLoaded && <ControllerLoader />}
 
       <Canvas
         camera={{ position: [0, 0, 5], fov: 45 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        gl={{
+          antialias: true,
+          alpha: true,
+          powerPreference: 'high-performance',
+        }}
         style={{
           position: 'absolute',
           top: 0,
@@ -39,28 +47,32 @@ export default function ControllerScene({ activeScene }: ControllerSceneProps) {
           pointerEvents: 'none',
         }}
       >
-        {/* Ambient lighting for soft base illumination */}
-        <ambientLight intensity={0.7} />
+        {/* Ambient base lighting */}
+        <ambientLight intensity={0.8} />
 
-        {/* Main Key Light — crisp white from top-right */}
-        <directionalLight position={[5, 6, 4]} intensity={2.2} color="#ffffff" />
+        {/* Key Light — crisp directional illumination for 3D depth and specular highlights */}
+        <directionalLight position={[6, 8, 5]} intensity={2.8} color="#ffffff" />
 
-        {/* Fill Light — cool soft blue from left */}
-        <directionalLight position={[-4, 2, 3]} intensity={0.9} color="#a0c8ff" />
+        {/* Fill Light — soft cool blue from front-left */}
+        <directionalLight position={[-5, 2, 4]} intensity={1.2} color="#a0c8ff" />
 
-        {/* Esports Accent Rim Light — vibrant Triple Stars green from behind-left */}
-        <directionalLight position={[-6, -2, -3]} intensity={3.5} color="#00ff88" />
+        {/* Primary Esports Rim Light — vibrant Triple Stars green */}
+        <pointLight position={[-5, -2, -3]} intensity={6.0} color="#00ff88" distance={16} />
 
-        {/* Cyberpunk Secondary Rim Light — electric cyan from top-behind */}
-        <directionalLight position={[3, 5, -3]} intensity={2.0} color="#00e5ff" />
+        {/* Secondary Lightbar Glow — electric cyan from top-rear */}
+        <pointLight position={[3, 5, -3]} intensity={4.5} color="#00e5ff" distance={14} />
 
-        {/* Environment map for realistic metallic/glossy reflections */}
-        <Environment preset="city" environmentIntensity={0.6} />
+        {/* Under-glow Bounce Light */}
+        <pointLight position={[1, -4, 2]} intensity={2.0} color="#ffffff" distance={10} />
 
-        {/* Suspense lives INSIDE Canvas to prevent React DOM tree mutation conflicts */}
+        {/* Environment reflections for realistic glossy and metallic surfaces */}
+        <Environment preset="night" environmentIntensity={0.8} />
+
+        {/* 3D Controller with continuous scroll interpolation & interactive 3D physics */}
         <Suspense fallback={null}>
           <Controller
             activeScene={activeScene}
+            scrollProgress={scrollProgress}
             onLoaded={() => setIsLoaded(true)}
           />
         </Suspense>

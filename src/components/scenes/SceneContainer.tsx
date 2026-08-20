@@ -10,20 +10,27 @@ gsap.registerPlugin(ScrollTrigger)
 interface SceneContainerProps {
   children: React.ReactNode
   onSceneChange?: (index: number) => void
+  onScrollProgress?: (progress: number) => void
 }
 
 export default function SceneContainer({
   children,
   onSceneChange,
+  onScrollProgress,
 }: SceneContainerProps) {
   const scrollWrapperRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const onSceneChangeRef = useRef(onSceneChange)
+  const onScrollProgressRef = useRef(onScrollProgress)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     onSceneChangeRef.current = onSceneChange
   }, [onSceneChange])
+
+  useEffect(() => {
+    onScrollProgressRef.current = onScrollProgress
+  }, [onScrollProgress])
 
   useEffect(() => {
     const checkMobile = () => {
@@ -55,6 +62,7 @@ export default function SceneContainer({
           invalidateOnRefresh: true,
           onUpdate: (self) => {
             const progress = self.progress
+            onScrollProgressRef.current?.(progress)
             const sceneIndex = Math.min(
               Math.floor(progress * totalPanels),
               totalPanels - 1

@@ -24,6 +24,7 @@ const ControllerScene = dynamic(
 
 export default function HomePage() {
   const [activeScene, setActiveScene] = useState(0)
+  const [scrollProgress, setScrollProgress] = useState(0)
   const [registrationOpen, setRegistrationOpen] = useState(false)
 
   // Live Supabase data hooks
@@ -33,6 +34,10 @@ export default function HomePage() {
 
   const handleSceneChange = useCallback((index: number) => {
     setActiveScene(index)
+  }, [])
+
+  const handleScrollProgress = useCallback((progress: number) => {
+    setScrollProgress(progress)
   }, [])
 
   // Programmatic smooth scroll to any horizontal scene
@@ -80,11 +85,14 @@ export default function HomePage() {
         onNavigate={navigateToScene}
       />
 
-      {/* 3D Controller Layer (renders in fixed overlay, reactive to activeScene & mouse) */}
-      <ControllerScene activeScene={activeScene} />
+      {/* 3D Controller Layer (renders in fixed overlay, continuously reactive to scroll & mouse) */}
+      <ControllerScene activeScene={activeScene} scrollProgress={scrollProgress} />
 
       {/* Horizontal GSAP Scene Container */}
-      <SceneContainer onSceneChange={handleSceneChange}>
+      <SceneContainer
+        onSceneChange={handleSceneChange}
+        onScrollProgress={handleScrollProgress}
+      >
         {/* Scene 01 — System */}
         <ScenePanel id="system">
           <SystemScene onEnterSystem={() => navigateToScene(1)} />
