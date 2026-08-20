@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SCENES, type SceneId } from '@/lib/types'
@@ -18,7 +18,13 @@ export default function SceneContainer({
 }: SceneContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const panelsRef = useRef<HTMLDivElement>(null)
+  const onSceneChangeRef = useRef(onSceneChange)
   const [isMobile, setIsMobile] = useState(false)
+
+  // Keep callback ref in sync without triggering effect re-runs
+  useEffect(() => {
+    onSceneChangeRef.current = onSceneChange
+  }, [onSceneChange])
 
   useEffect(() => {
     const checkMobile = () => {
@@ -34,34 +40,48 @@ export default function SceneContainer({
 
     const panels = panelsRef.current
     const totalPanels = SCENES.length
-    const totalWidth = panels.scrollWidth - window.innerWidth
 
-    // Horizontal scroll using ScrollTrigger
-    const ctx = gsap.context(() => {
-      const tween = gsap.to(panels, {
-        x: -totalWidth,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: containerRef.current,
-          pin: true,
-          scrub: 1,
-          end: () => `+=${totalWidth}`,
-          onUpdate: (self) => {
-            const progress = self.progress
-            const sceneIndex = Math.min(
-              Math.floor(progress * totalPanels),
-              totalPanels - 1
-            )
-            onSceneChange?.(sceneIndex)
+    // Wait a tick for layout to settle
+    const timer = setTimeout(() => {
+      const totalWidth = panels.scrollWidth - window.innerWidth
+
+      if (totalWidth <= 0) return
+
+      const ctx = gsap.context(() => {
+        gsap.to(panels, {
+          x: -totalWidth,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: containerRef.current,
+            pin: true,
+            scrub: 1,
+            end: () => `+=${totalWidth}`,
+            invalidateOnRefresh: true,
+            onUpdate: (self) => {
+              const progress = self.progress
+              const sceneIndex = Math.min(
+                Math.floor(progress * totalPanels),
+                totalPanels - 1
+              )
+              onSceneChangeRef.current?.(sceneIndex)
+            },
           },
-        },
-      })
-    }, containerRef)
+        })
+      }, containerRef)
 
-    return () => ctx.revert()
-  }, [isMobile, onSceneChange])
+      // Store ctx for cleanup
+      ;(containerRef.current as any).__gsapCtx = ctx
+    }, 100)
 
-  // Mobile: vertical snap layout
+    return () => {
+      clearTimeout(timer)
+      const ctx = (containerRef.current as any)?.__gsapCtx
+      if (ctx) ctx.revert()
+      ScrollTrigger.getAll().forEach((t) => t.kill())
+    }
+  }, [isMobile])
+
+  // Mobile: vertical layout
   if (isMobile) {
     return (
       <div className="w-full">
@@ -75,7 +95,7 @@ export default function SceneContainer({
     <div ref={containerRef} className="relative overflow-hidden">
       <div
         ref={panelsRef}
-        className="flex h-screen"
+        className="flex h-screen will-change-transform"
         style={{ width: `${SCENES.length * 100}vw` }}
       >
         {children}

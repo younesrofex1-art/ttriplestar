@@ -1,11 +1,8 @@
 'use client'
 
 import { useCallback } from 'react'
-import { SCENES, type SceneId } from '@/lib/types'
-import { gsap } from 'gsap'
+import { SCENES } from '@/lib/types'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-
-gsap.registerPlugin(ScrollTrigger)
 
 interface SceneNavProps {
   activeScene: number
@@ -17,21 +14,16 @@ export default function SceneNav({ activeScene, hasLive }: SceneNavProps) {
     const isMobile = window.innerWidth < 768
 
     if (isMobile) {
-      // On mobile, scroll to the section directly
       const section = document.getElementById(SCENES[index].id)
       section?.scrollIntoView({ behavior: 'smooth' })
     } else {
-      // On desktop, calculate scroll position based on horizontal progress
+      // Calculate the scroll position based on horizontal progress
       const triggers = ScrollTrigger.getAll()
       if (triggers.length > 0) {
         const trigger = triggers[0]
         const progress = index / (SCENES.length - 1)
         const scrollTo = trigger.start + (trigger.end - trigger.start) * progress
-        gsap.to(window, {
-          scrollTo: { y: scrollTo },
-          duration: 1.2,
-          ease: 'power3.inOut',
-        })
+        window.scrollTo({ top: scrollTo, behavior: 'smooth' })
       }
     }
   }, [])
