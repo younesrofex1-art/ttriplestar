@@ -2,7 +2,7 @@
 
 import React, { Suspense, useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Environment } from '@react-three/drei'
+import { Environment, AdaptiveDpr } from '@react-three/drei'
 import ControllerLoader from './ControllerLoader'
 import Controller from './Controller'
 
@@ -33,10 +33,13 @@ export default function ControllerScene({
 
       <Canvas
         camera={{ position: [0, 0, 5], fov: 45 }}
+        dpr={[1, 1.5]}
         gl={{
           antialias: true,
           alpha: true,
           powerPreference: 'high-performance',
+          stencil: false,
+          depth: true,
         }}
         style={{
           position: 'absolute',
@@ -47,6 +50,8 @@ export default function ControllerScene({
           pointerEvents: 'none',
         }}
       >
+        <AdaptiveDpr pixelated />
+
         {/* Ambient base lighting */}
         <ambientLight intensity={0.8} />
 
@@ -80,3 +85,4 @@ export default function ControllerScene({
     </div>
   )
 }
+

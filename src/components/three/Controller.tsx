@@ -1,9 +1,9 @@
 'use client'
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { ControllerModel } from './ControllerModel'
 
 interface ControllerProps {
   activeScene: number
@@ -31,6 +31,9 @@ const SCENE_KEYFRAMES: SceneKeyframe[] = [
   { position: [1.3, 0.22, 0.1], rotation: [0.25, 0.7, 0.12], scale: 1.1 },
 ]
 
+// Pre-calculated scale factor to match 3.3 world units prominently
+const MODEL_BASE_SCALE = 1.65
+
 export default function Controller({
   activeScene,
   scrollProgress,
@@ -38,48 +41,6 @@ export default function Controller({
 }: ControllerProps) {
   const rootGroup = useRef<THREE.Group>(null!)
   const motionGroup = useRef<THREE.Group>(null!)
-  const { scene } = useGLTF('/models/controller.glb')
-
-  // Center geometry and normalize scale
-  const { normalizedScene, normalizedScale } = useMemo(() => {
-    const cloned = scene.clone(true)
-
-    // Compute bounding box
-    const box = new THREE.Box3().setFromObject(cloned)
-    const size = box.getSize(new THREE.Vector3())
-    const center = box.getCenter(new THREE.Vector3())
-
-    // Center geometry at origin
-    cloned.position.set(-center.x, -center.y, -center.z)
-
-    // Scale to ~3.3 world units so it is prominent and fills the right side
-    const maxDim = Math.max(size.x, size.y, size.z)
-    const scaleFactor = maxDim > 0 ? 3.3 / maxDim : 1
-
-    // Enhance materials for realistic 3D sheen, specular highlights, and contrast
-    cloned.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh
-        mesh.castShadow = true
-        mesh.receiveShadow = true
-        if (mesh.material) {
-          const mat = mesh.material as THREE.MeshStandardMaterial
-          mat.roughness = Math.max(0.18, mat.roughness ?? 0.35)
-          mat.metalness = Math.min(0.85, (mat.metalness ?? 0.1) + 0.15)
-          mat.envMapIntensity = 1.2
-          mat.needsUpdate = true
-        }
-      }
-    })
-
-    return { normalizedScene: cloned, normalizedScale: scaleFactor }
-  }, [scene])
-
-  useEffect(() => {
-    if (scene && onLoaded) {
-      onLoaded()
-    }
-  }, [scene, onLoaded])
 
   const prefersReducedMotion = useRef(false)
   const mouse = useRef({ x: 0, y: 0 })
@@ -88,7 +49,7 @@ export default function Controller({
   const hoverFactor = useRef(0)
   const currentPos = useRef(new THREE.Vector3(...SCENE_KEYFRAMES[0].position))
   const currentRot = useRef(new THREE.Euler(...SCENE_KEYFRAMES[0].rotation))
-  const currentScale = useRef(SCENE_KEYFRAMES[0].scale)
+  const currentScale = useRef(SCENE_KEYFRAMES[0].scale * MODEL_BASE_SCALE)
 
   // Track global mouse & hover detection
   useEffect(() => {
@@ -145,18 +106,19 @@ export default function Controller({
     const targetRotY = THREE.MathUtils.lerp(kfA.rotation[1], kfB.rotation[1], easeT)
     const targetRotZ = THREE.MathUtils.lerp(kfA.rotation[2], kfB.rotation[2], easeT)
 
-    const targetScaleVal = THREE.MathUtils.lerp(kfA.scale, kfB.scale, easeT) * normalizedScale
+    const targetScaleVal = THREE.MathUtils.lerp(kfA.scale, kfB.scale, easeT) * MODEL_BASE_SCALE
 
-    // Smoothly lerp root position, rotation, and scale
-    currentPos.current.x += (targetPosX - currentPos.current.x) * 0.1
-    currentPos.current.y += (targetPosY - currentPos.current.y) * 0.1
-    currentPos.current.z += (targetPosZ - currentPos.current.z) * 0.1
+    // Smoothly lerp root position, rotation, and scale with frame-rate independent easing
+    const lerpSpeed = 1 - Math.exp(-10 * delta)
+    currentPos.current.x += (targetPosX - currentPos.current.x) * lerpSpeed
+    currentPos.current.y += (targetPosY - currentPos.current.y) * lerpSpeed
+    currentPos.current.z += (targetPosZ - currentPos.current.z) * lerpSpeed
 
-    currentRot.current.x += (targetRotX - currentRot.current.x) * 0.1
-    currentRot.current.y += (targetRotY - currentRot.current.y) * 0.1
-    currentRot.current.z += (targetRotZ - currentRot.current.z) * 0.1
+    currentRot.current.x += (targetRotX - currentRot.current.x) * lerpSpeed
+    currentRot.current.y += (targetRotY - currentRot.current.y) * lerpSpeed
+    currentRot.current.z += (targetRotZ - currentRot.current.z) * lerpSpeed
 
-    currentScale.current += (targetScaleVal - currentScale.current) * 0.1
+    currentScale.current += (targetScaleVal - currentScale.current) * lerpSpeed
 
     rootGroup.current.position.copy(currentPos.current)
     rootGroup.current.scale.setScalar(currentScale.current)
@@ -167,11 +129,12 @@ export default function Controller({
     }
 
     // ─── 2. Mouse Interpolation & Hover Physics ───────────────────────
-    smoothMouse.current.x += (mouse.current.x - smoothMouse.current.x) * 0.07
-    smoothMouse.current.y += (mouse.current.y - smoothMouse.current.y) * 0.07
+    const mouseLerpSpeed = 1 - Math.exp(-7 * delta)
+    smoothMouse.current.x += (mouse.current.x - smoothMouse.current.x) * mouseLerpSpeed
+    smoothMouse.current.y += (mouse.current.y - smoothMouse.current.y) * mouseLerpSpeed
 
     const targetHover = isHovered.current ? 1 : 0
-    hoverFactor.current += (targetHover - hoverFactor.current) * 0.08
+    hoverFactor.current += (targetHover - hoverFactor.current) * mouseLerpSpeed
 
     // Idle floating wave
     const floatSpeed = 1.4 + hoverFactor.current * 0.8
@@ -201,10 +164,9 @@ export default function Controller({
   return (
     <group ref={rootGroup}>
       <group ref={motionGroup}>
-        <primitive object={normalizedScene} />
+        <ControllerModel onLoaded={onLoaded} />
       </group>
     </group>
   )
 }
 
-useGLTF.preload('/models/controller.glb')
