@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useEffect, useState, useMemo } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useRef, useEffect, useMemo } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import gsap from 'gsap'
@@ -10,27 +10,57 @@ interface ControllerProps {
   activeScene: number
 }
 
-const SCENE_CONFIGS: { position: [number, number, number]; scale: number; rotation: [number, number, number] }[] = [
-  { position: [2, 0, 0] as const, scale: 1, rotation: [0, 0, 0] as const },
-  { position: [3, -0.5, -1] as const, scale: 0.8, rotation: [-0.2, -0.5, 0] as const },
-  { position: [2.5, 0, 0.5] as const, scale: 0.9, rotation: [0, -0.2, 0] as const },
-  { position: [4, 0, -2] as const, scale: 0.6, rotation: [-0.4, -0.8, 0] as const },
-  { position: [2, 0.5, 0] as const, scale: 1, rotation: [0.1, 0.2, 0] as const },
+// Scene layout configurations in 3D world units
+const SCENE_CONFIGS: {
+  position: [number, number, number]
+  scale: number
+  rotation: [number, number, number]
+}[] = [
+  // Scene 0: SYSTEM — Large, bold hero on right side
+  { position: [1.3, -0.1, 0], scale: 1.0, rotation: [0.2, -0.35, 0] },
+  // Scene 1: TOURNAMENT — Angled slightly back to the right
+  { position: [1.8, -0.3, -0.4], scale: 0.85, rotation: [-0.1, -0.65, 0.05] },
+  // Scene 2: LIVE — Elevated and angled towards match info
+  { position: [1.5, 0.1, 0.2], scale: 0.9, rotation: [0.15, -0.25, 0] },
+  // Scene 3: BRACKET — Pushed into depth so bracket stays legible
+  { position: [2.2, 0, -1.0], scale: 0.65, rotation: [-0.25, -0.85, 0] },
+  // Scene 4: RESULTS — Heroic celebratory pose
+  { position: [1.3, 0.2, 0], scale: 1.05, rotation: [0.2, 0.35, 0.08] },
 ]
 
 export default function Controller({ activeScene }: ControllerProps) {
-  const group = useRef<THREE.Group>(null!)
-  const innerRef = useRef<THREE.Group>(null!)
+  const rootGroup = useRef<THREE.Group>(null!)
+  const motionGroup = useRef<THREE.Group>(null!)
   const { scene } = useGLTF('/models/controller.glb')
 
-  // Clone the scene so it can be reused safely
-  const clonedScene = useMemo(() => scene.clone(), [scene])
+  // Center and normalize geometry scale so the controller is always perfectly sized
+  const { normalizedScene, normalizedScale } = useMemo(() => {
+    const cloned = scene.clone(true)
+
+    // Compute bounding box
+    const box = new THREE.Box3().setFromObject(cloned)
+    const size = box.getSize(new THREE.Vector3())
+    const center = box.getCenter(new THREE.Vector3())
+
+    // Center geometry at origin
+    cloned.position.set(-center.x, -center.y, -center.z)
+
+    // Target max dimension ~3.2 units (fills ~60% of viewport height at distance 5)
+    const maxDim = Math.max(size.x, size.y, size.z)
+    const scaleFactor = maxDim > 0 ? 3.2 / maxDim : 1
+
+    return { normalizedScene: cloned, normalizedScale: scaleFactor }
+  }, [scene])
 
   const prefersReducedMotion = useRef(false)
   const mouse = useRef({ x: 0, y: 0 })
+  const smoothMouse = useRef({ x: 0, y: 0 })
+  const isHovered = useRef(false)
+  const hoverFactor = useRef(0)
   const baseRotation = useRef(new THREE.Euler())
-  const initialPositionSet = useRef(false)
+  const initialPoseDone = useRef(false)
 
+  // Track global mouse movement & hover proximity
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     prefersReducedMotion.current = mq.matches
@@ -41,9 +71,16 @@ export default function Controller({ activeScene }: ControllerProps) {
     mq.addEventListener('change', mqListener)
 
     const handleMouseMove = (e: MouseEvent) => {
-      mouse.current.x = (e.clientX / window.innerWidth) * 2 - 1
-      mouse.current.y = -(e.clientY / window.innerHeight) * 2 + 1
+      const nx = (e.clientX / window.innerWidth) * 2 - 1
+      const ny = -(e.clientY / window.innerHeight) * 2 + 1
+      mouse.current.x = nx
+      mouse.current.y = ny
+
+      // Hover zone: when mouse is on the right half of the screen (near the 3D model)
+      // or within proximity of the model's screen coords
+      isHovered.current = nx > 0.1 && Math.abs(ny) < 0.8
     }
+
     window.addEventListener('mousemove', handleMouseMove)
 
     return () => {
@@ -52,69 +89,89 @@ export default function Controller({ activeScene }: ControllerProps) {
     }
   }, [])
 
-  // Set initial position immediately
+  // Set initial pose
   useEffect(() => {
-    if (!group.current || initialPositionSet.current) return
-    const config = SCENE_CONFIGS[0]
-    group.current.position.set(...config.position)
-    group.current.scale.setScalar(config.scale)
-    initialPositionSet.current = true
-  }, [])
+    if (!rootGroup.current || initialPoseDone.current) return
+    const initialConfig = SCENE_CONFIGS[0]
+    rootGroup.current.position.set(...initialConfig.position)
+    rootGroup.current.scale.setScalar(initialConfig.scale * normalizedScale)
+    baseRotation.current.set(...initialConfig.rotation)
+    initialPoseDone.current = true
+  }, [normalizedScale])
 
-  // Animate between scene positions
+  // Animate between horizontal scenes
   useEffect(() => {
-    if (!group.current) return
+    if (!rootGroup.current) return
     const idx = Math.max(0, Math.min(activeScene, SCENE_CONFIGS.length - 1))
     const config = SCENE_CONFIGS[idx]
 
-    baseRotation.current.set(config.rotation[0], config.rotation[1], config.rotation[2])
+    baseRotation.current.set(...config.rotation)
+    const targetScale = config.scale * normalizedScale
 
     if (prefersReducedMotion.current) {
-      group.current.position.set(...config.position)
-      group.current.scale.setScalar(config.scale)
+      rootGroup.current.position.set(...config.position)
+      rootGroup.current.scale.setScalar(targetScale)
     } else {
-      gsap.to(group.current.position, {
+      gsap.to(rootGroup.current.position, {
         x: config.position[0],
         y: config.position[1],
         z: config.position[2],
         duration: 1.2,
         ease: 'power3.inOut',
       })
-      gsap.to(group.current.scale, {
-        x: config.scale,
-        y: config.scale,
-        z: config.scale,
+      gsap.to(rootGroup.current.scale, {
+        x: targetScale,
+        y: targetScale,
+        z: targetScale,
         duration: 1.2,
         ease: 'power3.inOut',
       })
     }
-  }, [activeScene])
+  }, [activeScene, normalizedScale])
 
-  useFrame((state) => {
-    if (!innerRef.current || prefersReducedMotion.current) return
+  // Per-frame physics, floating, smooth mouse follow & hover tilt
+  useFrame((state, delta) => {
+    if (!motionGroup.current || prefersReducedMotion.current) return
 
     const t = state.clock.elapsedTime
 
-    // Idle slow rotation on Y axis
-    const idleRotY = t * 0.15
+    // Smooth mouse interpolation (springy lerp)
+    smoothMouse.current.x += (mouse.current.x - smoothMouse.current.x) * 0.08
+    smoothMouse.current.y += (mouse.current.y - smoothMouse.current.y) * 0.08
 
-    // Subtle floating
-    const floatY = Math.sin(t * ((Math.PI * 2) / 3)) * 0.05
+    // Smooth hover factor transition (0 to 1)
+    const targetHover = isHovered.current ? 1 : 0
+    hoverFactor.current += (targetHover - hoverFactor.current) * 0.1
 
-    // Mouse follow
-    const mRotX = mouse.current.y * 0.1
-    const mRotY = mouse.current.x * 0.1
+    // Idle floating wave
+    const floatSpeed = 1.6 + hoverFactor.current * 0.8
+    const floatHeight = 0.07 + hoverFactor.current * 0.04
+    const floatY = Math.sin(t * floatSpeed) * floatHeight
 
-    innerRef.current.position.y = floatY
-    innerRef.current.rotation.x = baseRotation.current.x + mRotX
-    innerRef.current.rotation.y = baseRotation.current.y + idleRotY + mRotY
-    innerRef.current.rotation.z = baseRotation.current.z
+    // Idle slow yaw rotation
+    const idleYaw = t * 0.12
+
+    // Interactive mouse tilt (more intense on hover)
+    const tiltMultiplier = 0.35 + hoverFactor.current * 0.25
+    const mousePitch = smoothMouse.current.y * tiltMultiplier
+    const mouseYaw = smoothMouse.current.x * tiltMultiplier
+    const mouseRoll = -smoothMouse.current.x * 0.15
+
+    // Hover scale boost (+10% scale when cursor is nearby)
+    const hoverScaleBoost = 1 + hoverFactor.current * 0.1
+    motionGroup.current.scale.setScalar(hoverScaleBoost)
+
+    // Apply combined transformations
+    motionGroup.current.position.y = floatY
+    motionGroup.current.rotation.x = baseRotation.current.x + mousePitch
+    motionGroup.current.rotation.y = baseRotation.current.y + idleYaw + mouseYaw
+    motionGroup.current.rotation.z = baseRotation.current.z + mouseRoll
   })
 
   return (
-    <group ref={group}>
-      <group ref={innerRef}>
-        <primitive object={clonedScene} />
+    <group ref={rootGroup}>
+      <group ref={motionGroup}>
+        <primitive object={normalizedScene} />
       </group>
     </group>
   )

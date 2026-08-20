@@ -1,65 +1,22 @@
 'use client'
 
-import React, { Suspense, lazy, useEffect, useState } from 'react'
+import React, { Suspense } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { Environment } from '@react-three/drei'
 import ControllerLoader from './ControllerLoader'
-
-// Only dynamically import the Canvas - everything inside it uses regular imports
-const LazyCanvas = lazy(() =>
-  import('@react-three/fiber').then((mod) => ({ default: mod.Canvas }))
-)
-
-// The inner scene component that lives inside the Canvas
-// Must be a separate component so R3F hooks work
-function CanvasContent({ activeScene }: { activeScene: number }) {
-  // Import these inside the component to avoid SSR issues
-  const [SceneContent, setSceneContent] = useState<React.ComponentType<{ activeScene: number }> | null>(null)
-
-  useEffect(() => {
-    // Dynamically load the scene content after mount
-    Promise.all([
-      import('@react-three/drei'),
-      import('./Controller'),
-    ]).then(([drei, controllerMod]) => {
-      const { Environment } = drei
-      const Controller = controllerMod.default
-
-      // Create a wrapper component
-      const Content = ({ activeScene }: { activeScene: number }) => (
-        <>
-          <ambientLight intensity={0.4} />
-          <directionalLight position={[5, 5, 5]} intensity={0.8} color="#ffffff" />
-          <directionalLight position={[-5, -2, -5]} intensity={0.4} color="#00ff88" />
-          <Environment preset="night" />
-          <Controller activeScene={activeScene} />
-        </>
-      )
-      setSceneContent(() => Content)
-    })
-  }, [])
-
-  if (!SceneContent) return null
-  return <SceneContent activeScene={activeScene} />
-}
+import Controller from './Controller'
 
 interface ControllerSceneProps {
   activeScene: number
 }
 
 export default function ControllerScene({ activeScene }: ControllerSceneProps) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) return <ControllerLoader />
-
   return (
-    <div className="fixed inset-0 z-[1] pointer-events-none w-full h-full">
+    <div className="fixed inset-0 z-[10] pointer-events-none w-full h-full">
       <Suspense fallback={<ControllerLoader />}>
-        <LazyCanvas
+        <Canvas
           camera={{ position: [0, 0, 5], fov: 45 }}
-          gl={{ antialias: true, alpha: true }}
+          gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
           style={{
             position: 'absolute',
             top: 0,
@@ -69,10 +26,27 @@ export default function ControllerScene({ activeScene }: ControllerSceneProps) {
             pointerEvents: 'none',
           }}
         >
-          <Suspense fallback={null}>
-            <CanvasContent activeScene={activeScene} />
-          </Suspense>
-        </LazyCanvas>
+          {/* Ambient lighting for soft base illumination */}
+          <ambientLight intensity={0.7} />
+
+          {/* Main Key Light — crisp white from top-right */}
+          <directionalLight position={[5, 6, 4]} intensity={2.2} color="#ffffff" />
+
+          {/* Fill Light — cool soft blue from left */}
+          <directionalLight position={[-4, 2, 3]} intensity={0.9} color="#a0c8ff" />
+
+          {/* Esports Accent Rim Light — vibrant Triple Stars green from behind-left */}
+          <directionalLight position={[-6, -2, -3]} intensity={3.5} color="#00ff88" />
+
+          {/* Cyberpunk Secondary Rim Light — electric cyan from top-behind */}
+          <directionalLight position={[3, 5, -3]} intensity={2.0} color="#00e5ff" />
+
+          {/* Environment map for realistic metallic/glossy reflections */}
+          <Environment preset="city" environmentIntensity={0.6} />
+
+          {/* 3D Controller with interactive motion and hover effects */}
+          <Controller activeScene={activeScene} />
+        </Canvas>
       </Suspense>
     </div>
   )

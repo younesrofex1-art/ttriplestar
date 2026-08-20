@@ -1,106 +1,133 @@
-'use client';
+'use client'
 
-import React, { useMemo } from 'react';
-import type { Tournament, TournamentMatch } from '@/lib/types';
+import React, { useMemo } from 'react'
+import type { Tournament, TournamentMatch } from '@/lib/types'
 
 interface ResultsSceneProps {
-  tournament: Tournament | null;
-  matches: TournamentMatch[];
+  tournament: Tournament | null
+  matches: TournamentMatch[]
+  onNavigate?: (index: number) => void
 }
 
-export function ResultsScene({ tournament, matches }: ResultsSceneProps) {
+export function ResultsScene({ tournament, matches, onNavigate }: ResultsSceneProps) {
   const results = useMemo(() => {
     if (!tournament || tournament.status !== 'COMPLETED' || matches.length === 0) {
-      return null;
+      return null
     }
-    
-    // Simple heuristic for single elimination:
-    // Highest round number is final.
-    const maxRound = Math.max(...matches.map(m => m.round_number || 1));
-    const finalMatch = matches.find(m => m.round_number === maxRound);
-    
-    let winner = null;
-    let runnerUp = null;
-    let thirdPlace = null; // We might not have a 3rd place match, fallback to semi-final losers
+
+    const maxRound = Math.max(...matches.map((m) => m.round_number || 1))
+    const finalMatch = matches.find((m) => m.round_number === maxRound)
+
+    let winner = null
+    let runnerUp = null
+    let thirdPlace = null
 
     if (finalMatch) {
       if (finalMatch.winner_id === finalMatch.player1_id) {
-        winner = finalMatch.player1;
-        runnerUp = finalMatch.player2;
+        winner = finalMatch.player1
+        runnerUp = finalMatch.player2
       } else if (finalMatch.winner_id === finalMatch.player2_id) {
-        winner = finalMatch.player2;
-        runnerUp = finalMatch.player1;
+        winner = finalMatch.player2
+        runnerUp = finalMatch.player1
       }
     }
 
-    const semiFinals = matches.filter(m => m.round_number === maxRound - 1);
-    const semiLosers = semiFinals.map(m => {
-      if (m.winner_id === m.player1_id) return m.player2;
-      if (m.winner_id === m.player2_id) return m.player1;
-      return null;
-    }).filter(Boolean);
-    
+    const semiFinals = matches.filter((m) => m.round_number === maxRound - 1)
+    const semiLosers = semiFinals
+      .map((m) => {
+        if (m.winner_id === m.player1_id) return m.player2
+        if (m.winner_id === m.player2_id) return m.player1
+        return null
+      })
+      .filter(Boolean)
+
     if (semiLosers.length > 0) {
-      thirdPlace = semiLosers[0]; // just picking the first for simplicity
+      thirdPlace = semiLosers[0]
     }
 
-    return { winner, runnerUp, thirdPlace };
-  }, [tournament, matches]);
-
-  const scrollToBracket = () => {
-    document.getElementById('bracket')?.scrollIntoView({ behavior: 'smooth' });
-  };
+    return { winner, runnerUp, thirdPlace }
+  }, [tournament, matches])
 
   if (!tournament || tournament.status !== 'COMPLETED' || !results) {
     return (
-      <section id="results" className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-[#0a0a0a] text-[#ededed]">
-        <h2 className="text-4xl md:text-6xl font-display font-bold mb-4">RESULTS</h2>
-        <div className="font-mono text-[#666666] tracking-widest mb-8">NOT AVAILABLE</div>
-        <div className="font-sans text-sm text-[#ededed]">Tournament results will appear after the event concludes.</div>
-      </section>
-    );
+      <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-[#0a0a0a] text-[#ededed] select-none">
+        <div className="font-mono text-xs text-text-secondary tracking-[0.25em] uppercase mb-2">
+          TOURNAMENT ARCHIVE
+        </div>
+        <h2 className="text-4xl md:text-6xl font-display font-extrabold tracking-tight mb-4">
+          RESULTS PENDING
+        </h2>
+        <div className="font-mono text-xs text-text-muted">
+          Official podium rankings and prize distribution will be published upon tournament conclusion.
+        </div>
+      </div>
+    )
   }
 
-  const { winner, runnerUp, thirdPlace } = results;
+  const { winner, runnerUp, thirdPlace } = results
 
   return (
-    <section id="results" className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-[#0a0a0a] text-[#ededed] relative">
-      <div className="relative z-10 max-w-4xl w-full">
-        <div className="font-mono text-[#00ff88] tracking-widest uppercase mb-4 text-sm font-bold">
+    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-[#0a0a0a] text-[#ededed] relative select-none">
+      <div className="relative z-10 max-w-3xl w-full">
+        <div className="font-mono text-accent tracking-[0.25em] uppercase mb-2 text-xs font-bold flex items-center gap-2">
+          <span className="status-dot status-online" />
           TOURNAMENT COMPLETE
         </div>
-        <h2 className="text-5xl md:text-7xl font-display font-bold mb-16">{tournament.name}</h2>
-        
-        <div className="space-y-12 mb-16">
+        <h2 className="text-4xl md:text-6xl font-display font-extrabold tracking-tight mb-12">
+          {tournament.name}
+        </h2>
+
+        <div className="space-y-6 mb-12 border-y border-border/80 py-8 bg-bg-surface/30 px-6">
           {winner && (
-            <div className="flex items-center space-x-6">
-              <div className="font-mono text-[#00ff88] text-6xl md:text-8xl font-bold leading-none w-24 md:w-32">1ST</div>
-              <div className="font-display text-4xl md:text-6xl font-bold truncate flex-1">{winner.display_name}</div>
+            <div className="flex items-center gap-6">
+              <div className="font-mono text-accent text-5xl md:text-7xl font-black leading-none w-20 md:w-28">
+                1ST
+              </div>
+              <div className="flex-1">
+                <div className="text-2xl md:text-4xl font-display font-extrabold text-text-primary truncate">
+                  {winner.display_name}
+                </div>
+                <div className="font-mono text-xs text-accent mt-0.5">CHAMPION</div>
+              </div>
             </div>
           )}
-          
+
           {runnerUp && (
-            <div className="flex items-center space-x-6">
-              <div className="font-mono text-[#666666] text-4xl md:text-5xl font-bold leading-none w-24 md:w-32">2ND</div>
-              <div className="font-display text-2xl md:text-4xl font-bold truncate flex-1 text-[#ededed]">{runnerUp.display_name}</div>
+            <div className="flex items-center gap-6 border-t border-border/40 pt-4">
+              <div className="font-mono text-text-muted text-3xl md:text-5xl font-black leading-none w-20 md:w-28">
+                2ND
+              </div>
+              <div className="flex-1">
+                <div className="text-xl md:text-2xl font-display font-bold text-text-secondary truncate">
+                  {runnerUp.display_name}
+                </div>
+                <div className="font-mono text-xs text-text-muted mt-0.5">FINALIST</div>
+              </div>
             </div>
           )}
-          
+
           {thirdPlace && (
-            <div className="flex items-center space-x-6">
-              <div className="font-mono text-[#666666] text-3xl md:text-4xl font-bold leading-none w-24 md:w-32">3RD</div>
-              <div className="font-display text-xl md:text-3xl font-bold truncate flex-1 text-[#ededed]">{thirdPlace.display_name}</div>
+            <div className="flex items-center gap-6 border-t border-border/40 pt-4">
+              <div className="font-mono text-text-muted text-2xl md:text-4xl font-black leading-none w-20 md:w-28">
+                3RD
+              </div>
+              <div className="flex-1">
+                <div className="text-lg md:text-xl font-display font-bold text-text-secondary truncate">
+                  {thirdPlace.display_name}
+                </div>
+                <div className="font-mono text-xs text-text-muted mt-0.5">SEMI-FINALIST</div>
+              </div>
             </div>
           )}
         </div>
-        
-        <button 
-          onClick={scrollToBracket}
-          className="inline-block border border-[#1a1a1a] hover:border-[#ededed] transition-colors px-6 py-3 font-mono text-sm tracking-widest uppercase"
+
+        <button
+          onClick={() => onNavigate?.(3)}
+          className="inline-block border border-border-strong hover:border-text-primary text-text-primary transition-colors px-8 py-3.5 font-mono text-xs tracking-widest uppercase"
         >
-          VIEW FULL BRACKET
+          VIEW COMPLETED BRACKET →
         </button>
       </div>
-    </section>
-  );
+    </div>
+  )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SCENES, type SceneId } from '@/lib/types'
@@ -21,7 +21,6 @@ export default function SceneContainer({
   const onSceneChangeRef = useRef(onSceneChange)
   const [isMobile, setIsMobile] = useState(false)
 
-  // Keep callback ref in sync without triggering effect re-runs
   useEffect(() => {
     onSceneChangeRef.current = onSceneChange
   }, [onSceneChange])
@@ -35,27 +34,31 @@ export default function SceneContainer({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // Desktop horizontal pinning & scroll
   useEffect(() => {
     if (isMobile || !panelsRef.current || !containerRef.current) return
 
+    const container = containerRef.current
     const panels = panelsRef.current
     const totalPanels = SCENES.length
 
-    // Wait a tick for layout to settle
-    const timer = setTimeout(() => {
-      const totalWidth = panels.scrollWidth - window.innerWidth
+    let st: ScrollTrigger | null = null
 
-      if (totalWidth <= 0) return
-
+    // Give DOM a frame to compute exact dimensions
+    const frameId = requestAnimationFrame(() => {
       const ctx = gsap.context(() => {
+        const scrollDistance = (totalPanels - 1) * window.innerHeight * 1.2
+
         gsap.to(panels, {
-          x: -totalWidth,
+          x: () => -(panels.scrollWidth - window.innerWidth),
           ease: 'none',
           scrollTrigger: {
-            trigger: containerRef.current,
+            id: 'horizontal-scroll',
+            trigger: container,
             pin: true,
-            scrub: 1,
-            end: () => `+=${totalWidth}`,
+            scrub: 0.8,
+            start: 'top top',
+            end: () => `+=${scrollDistance}`,
             invalidateOnRefresh: true,
             onUpdate: (self) => {
               const progress = self.progress
@@ -67,17 +70,46 @@ export default function SceneContainer({
             },
           },
         })
-      }, containerRef)
+      }, container)
 
-      // Store ctx for cleanup
-      ;(containerRef.current as any).__gsapCtx = ctx
-    }, 100)
+      ScrollTrigger.refresh()
+    })
+
+    // Keyboard arrow navigation support
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['ArrowRight', 'ArrowDown', 'PageDown'].includes(e.key)) {
+        const triggers = ScrollTrigger.getAll()
+        const trigger = triggers.find((t) => t.vars.id === 'horizontal-scroll') || triggers[0]
+        if (trigger) {
+          const currentProgress = trigger.progress
+          const currentIndex = Math.round(currentProgress * (totalPanels - 1))
+          const nextIndex = Math.min(currentIndex + 1, totalPanels - 1)
+          const targetY = trigger.start + (trigger.end - trigger.start) * (nextIndex / (totalPanels - 1))
+          const lenis = (window as any).__lenis
+          if (lenis) lenis.scrollTo(targetY)
+          else window.scrollTo({ top: targetY, behavior: 'smooth' })
+        }
+      } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) {
+        const triggers = ScrollTrigger.getAll()
+        const trigger = triggers.find((t) => t.vars.id === 'horizontal-scroll') || triggers[0]
+        if (trigger) {
+          const currentProgress = trigger.progress
+          const currentIndex = Math.round(currentProgress * (totalPanels - 1))
+          const prevIndex = Math.max(currentIndex - 1, 0)
+          const targetY = trigger.start + (trigger.end - trigger.start) * (prevIndex / (totalPanels - 1))
+          const lenis = (window as any).__lenis
+          if (lenis) lenis.scrollTo(targetY)
+          else window.scrollTo({ top: targetY, behavior: 'smooth' })
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      clearTimeout(timer)
-      const ctx = (containerRef.current as any)?.__gsapCtx
-      if (ctx) ctx.revert()
-      ScrollTrigger.getAll().forEach((t) => t.kill())
+      cancelAnimationFrame(frameId)
+      window.removeEventListener('keydown', handleKeyDown)
+      ScrollTrigger.getById('horizontal-scroll')?.kill()
     }
   }, [isMobile])
 
@@ -90,9 +122,9 @@ export default function SceneContainer({
     )
   }
 
-  // Desktop: horizontal scroll
+  // Desktop: horizontal container
   return (
-    <div ref={containerRef} className="relative overflow-hidden">
+    <div ref={containerRef} className="relative overflow-hidden w-full">
       <div
         ref={panelsRef}
         className="flex h-screen will-change-transform"
@@ -114,12 +146,12 @@ interface ScenePanelProps {
 
 export function ScenePanel({ id, children, className = '' }: ScenePanelProps) {
   return (
-    <section
+    <div
       id={id}
       className={`relative w-screen h-screen flex-shrink-0 overflow-hidden ${className}`}
       aria-label={`${id} scene`}
     >
       {children}
-    </section>
+    </div>
   )
 }

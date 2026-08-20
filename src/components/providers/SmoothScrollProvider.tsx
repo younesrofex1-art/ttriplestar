@@ -13,7 +13,6 @@ export default function SmoothScrollProvider({
   children: React.ReactNode
 }) {
   const lenisRef = useRef<Lenis | null>(null)
-  const rafIdRef = useRef<ReturnType<typeof gsap.ticker.add> | null>(null)
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
@@ -21,25 +20,31 @@ export default function SmoothScrollProvider({
     ).matches
 
     const lenis = new Lenis({
-      lerp: prefersReducedMotion ? 1 : 0.1,
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
       smoothWheel: !prefersReducedMotion,
+      touchMultiplier: 1.5,
     })
 
     lenisRef.current = lenis
+    ;(window as any).__lenis = lenis
 
-    // Connect Lenis scroll updates to GSAP ScrollTrigger
+    // Sync Lenis scroll with ScrollTrigger
     lenis.on('scroll', ScrollTrigger.update)
 
-    // Drive Lenis from GSAP ticker
-    const tickerCallback = (time: number) => {
+    // Run Lenis on GSAP ticker
+    const ticker = (time: number) => {
       lenis.raf(time * 1000)
     }
-    gsap.ticker.add(tickerCallback)
+    gsap.ticker.add(ticker)
     gsap.ticker.lagSmoothing(0)
 
     return () => {
-      gsap.ticker.remove(tickerCallback)
+      gsap.ticker.remove(ticker)
       lenis.destroy()
+      delete (window as any).__lenis
     }
   }, [])
 

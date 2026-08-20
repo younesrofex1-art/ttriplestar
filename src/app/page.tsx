@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import SceneContainer, { ScenePanel } from '@/components/scenes/SceneContainer'
 import SceneNav from '@/components/navigation/SceneNav'
@@ -13,8 +14,9 @@ import { BracketScene } from '@/components/scenes/BracketScene'
 import { ResultsScene } from '@/components/scenes/ResultsScene'
 import RegistrationPanel from '@/components/registration/RegistrationPanel'
 import { useTournament, useMatches, useStreams } from '@/hooks/use-tournament-data'
+import { SCENES } from '@/lib/types'
 
-// Lazy-load the 3D controller scene
+// Lazy-load the 3D controller scene without SSR
 const ControllerScene = dynamic(
   () => import('@/components/three/ControllerScene'),
   { ssr: false }
@@ -24,13 +26,39 @@ export default function HomePage() {
   const [activeScene, setActiveScene] = useState(0)
   const [registrationOpen, setRegistrationOpen] = useState(false)
 
-  // Data hooks
-  const { tournament, publicState, registrationCount, isLoading } = useTournament()
+  // Live Supabase data hooks
+  const { tournament, publicState, registrationCount } = useTournament()
   const { matches, rounds, liveMatch } = useMatches(tournament?.id)
   const { liveStream } = useStreams(tournament?.id)
 
   const handleSceneChange = useCallback((index: number) => {
     setActiveScene(index)
+  }, [])
+
+  // Programmatic smooth scroll to any horizontal scene
+  const navigateToScene = useCallback((index: number) => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+
+    if (isMobile) {
+      const targetId = SCENES[index]?.id
+      if (targetId) {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' })
+      }
+      return
+    }
+
+    const triggers = ScrollTrigger.getAll()
+    const trigger = triggers.find((t) => t.vars.id === 'horizontal-scroll') || triggers[0]
+    if (trigger) {
+      const progress = index / (SCENES.length - 1)
+      const targetY = trigger.start + (trigger.end - trigger.start) * progress
+      const lenis = (window as any).__lenis
+      if (lenis) {
+        lenis.scrollTo(targetY, { duration: 1.2 })
+      } else {
+        window.scrollTo({ top: targetY, behavior: 'smooth' })
+      }
+    }
   }, [])
 
   const handleOpenRegistration = useCallback(() => {
@@ -45,17 +73,21 @@ export default function HomePage() {
 
   return (
     <SmoothScrollProvider>
-      {/* Navigation */}
-      <SceneNav activeScene={activeScene} hasLive={hasLive} />
+      {/* Top Navigation Bar */}
+      <SceneNav
+        activeScene={activeScene}
+        hasLive={hasLive}
+        onNavigate={navigateToScene}
+      />
 
-      {/* 3D Controller (lazy-loaded, overlays everything) */}
+      {/* 3D Controller Layer (renders in fixed overlay, reactive to activeScene & mouse) */}
       <ControllerScene activeScene={activeScene} />
 
-      {/* Horizontal Scene Container */}
+      {/* Horizontal GSAP Scene Container */}
       <SceneContainer onSceneChange={handleSceneChange}>
         {/* Scene 01 — System */}
         <ScenePanel id="system">
-          <SystemScene />
+          <SystemScene onEnterSystem={() => navigateToScene(1)} />
         </ScenePanel>
 
         {/* Scene 02 — Tournament */}
@@ -65,6 +97,7 @@ export default function HomePage() {
             publicState={publicState}
             registrationCount={registrationCount}
             onRegister={handleOpenRegistration}
+            onNavigate={navigateToScene}
           />
         </ScenePanel>
 
@@ -74,6 +107,7 @@ export default function HomePage() {
             tournament={publicState === 'LIVE' ? tournament : null}
             liveMatch={liveMatch}
             liveStream={liveStream}
+            onNavigate={navigateToScene}
           />
         </ScenePanel>
 
@@ -83,6 +117,7 @@ export default function HomePage() {
             tournament={tournament}
             matches={matches}
             rounds={rounds}
+            onNavigate={navigateToScene}
           />
         </ScenePanel>
 
@@ -91,14 +126,15 @@ export default function HomePage() {
           <ResultsScene
             tournament={tournament}
             matches={matches}
+            onNavigate={navigateToScene}
           />
         </ScenePanel>
       </SceneContainer>
 
-      {/* Scene Indicator */}
-      <SceneIndicator activeScene={activeScene} />
+      {/* Bottom Scene Indicators */}
+      <SceneIndicator activeScene={activeScene} onNavigate={navigateToScene} />
 
-      {/* Registration Panel */}
+      {/* Registration Slide-in Panel */}
       {tournament && (
         <RegistrationPanel
           tournament={tournament}
