@@ -8,6 +8,7 @@ import gsap from 'gsap'
 
 interface ControllerProps {
   activeScene: number
+  onLoaded?: () => void
 }
 
 // Scene layout configurations in 3D world units
@@ -28,10 +29,16 @@ const SCENE_CONFIGS: {
   { position: [1.3, 0.2, 0], scale: 1.05, rotation: [0.2, 0.35, 0.08] },
 ]
 
-export default function Controller({ activeScene }: ControllerProps) {
+export default function Controller({ activeScene, onLoaded }: ControllerProps) {
   const rootGroup = useRef<THREE.Group>(null!)
   const motionGroup = useRef<THREE.Group>(null!)
   const { scene } = useGLTF('/models/controller.glb')
+
+  useEffect(() => {
+    if (scene && onLoaded) {
+      onLoaded()
+    }
+  }, [scene, onLoaded])
 
   // Center and normalize geometry scale so the controller is always perfectly sized
   const { normalizedScene, normalizedScale } = useMemo(() => {
