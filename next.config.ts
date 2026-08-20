@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow local network access in dev
+  allowedDevOrigins: ['192.168.0.105', 'localhost'],
+
   // Transpile Three.js ecosystem packages
   transpilePackages: ['three', '@react-three/fiber', '@react-three/drei'],
 
