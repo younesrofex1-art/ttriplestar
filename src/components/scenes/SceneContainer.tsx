@@ -16,8 +16,8 @@ export default function SceneContainer({
   children,
   onSceneChange,
 }: SceneContainerProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const panelsRef = useRef<HTMLDivElement>(null)
+  const scrollWrapperRef = useRef<HTMLDivElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
   const onSceneChangeRef = useRef(onSceneChange)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -34,82 +34,74 @@ export default function SceneContainer({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Desktop horizontal pinning & scroll
+  // Desktop horizontal translation driven by CSS sticky + GSAP scrub (ZERO pin-spacer DOM reparenting)
   useEffect(() => {
-    if (isMobile || !panelsRef.current || !containerRef.current) return
+    if (isMobile || !trackRef.current || !scrollWrapperRef.current) return
 
-    const container = containerRef.current
-    const panels = panelsRef.current
+    const scrollWrapper = scrollWrapperRef.current
+    const track = trackRef.current
     const totalPanels = SCENES.length
 
-    let st: ScrollTrigger | null = null
-
-    // Give DOM a frame to compute exact dimensions
-    const frameId = requestAnimationFrame(() => {
-      const ctx = gsap.context(() => {
-        const scrollDistance = (totalPanels - 1) * window.innerHeight * 1.2
-
-        gsap.to(panels, {
-          x: () => -(panels.scrollWidth - window.innerWidth),
-          ease: 'none',
-          scrollTrigger: {
-            id: 'horizontal-scroll',
-            trigger: container,
-            pin: true,
-            scrub: 0.8,
-            start: 'top top',
-            end: () => `+=${scrollDistance}`,
-            invalidateOnRefresh: true,
-            onUpdate: (self) => {
-              const progress = self.progress
-              const sceneIndex = Math.min(
-                Math.floor(progress * totalPanels),
-                totalPanels - 1
-              )
-              onSceneChangeRef.current?.(sceneIndex)
-            },
+    const ctx = gsap.context(() => {
+      gsap.to(track, {
+        x: () => -(track.scrollWidth - window.innerWidth),
+        ease: 'none',
+        scrollTrigger: {
+          id: 'horizontal-scroll',
+          trigger: scrollWrapper,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 0.8,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            const progress = self.progress
+            const sceneIndex = Math.min(
+              Math.floor(progress * totalPanels),
+              totalPanels - 1
+            )
+            onSceneChangeRef.current?.(sceneIndex)
           },
-        })
-      }, container)
+        },
+      })
+    }, scrollWrapper)
 
-      ScrollTrigger.refresh()
-    })
+    ScrollTrigger.refresh()
 
     // Keyboard arrow navigation support
     const handleKeyDown = (e: KeyboardEvent) => {
+      const trigger = ScrollTrigger.getById('horizontal-scroll')
+      if (!trigger) return
+
       if (['ArrowRight', 'ArrowDown', 'PageDown'].includes(e.key)) {
-        const triggers = ScrollTrigger.getAll()
-        const trigger = triggers.find((t) => t.vars.id === 'horizontal-scroll') || triggers[0]
-        if (trigger) {
-          const currentProgress = trigger.progress
-          const currentIndex = Math.round(currentProgress * (totalPanels - 1))
-          const nextIndex = Math.min(currentIndex + 1, totalPanels - 1)
-          const targetY = trigger.start + (trigger.end - trigger.start) * (nextIndex / (totalPanels - 1))
-          const lenis = (window as any).__lenis
-          if (lenis) lenis.scrollTo(targetY)
-          else window.scrollTo({ top: targetY, behavior: 'smooth' })
-        }
+        e.preventDefault()
+        const currentProgress = trigger.progress
+        const currentIndex = Math.round(currentProgress * (totalPanels - 1))
+        const nextIndex = Math.min(currentIndex + 1, totalPanels - 1)
+        const targetY =
+          trigger.start +
+          (trigger.end - trigger.start) * (nextIndex / (totalPanels - 1))
+        const lenis = (window as any).__lenis
+        if (lenis) lenis.scrollTo(targetY, { duration: 1.2 })
+        else window.scrollTo({ top: targetY, behavior: 'smooth' })
       } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) {
-        const triggers = ScrollTrigger.getAll()
-        const trigger = triggers.find((t) => t.vars.id === 'horizontal-scroll') || triggers[0]
-        if (trigger) {
-          const currentProgress = trigger.progress
-          const currentIndex = Math.round(currentProgress * (totalPanels - 1))
-          const prevIndex = Math.max(currentIndex - 1, 0)
-          const targetY = trigger.start + (trigger.end - trigger.start) * (prevIndex / (totalPanels - 1))
-          const lenis = (window as any).__lenis
-          if (lenis) lenis.scrollTo(targetY)
-          else window.scrollTo({ top: targetY, behavior: 'smooth' })
-        }
+        e.preventDefault()
+        const currentProgress = trigger.progress
+        const currentIndex = Math.round(currentProgress * (totalPanels - 1))
+        const prevIndex = Math.max(currentIndex - 1, 0)
+        const targetY =
+          trigger.start +
+          (trigger.end - trigger.start) * (prevIndex / (totalPanels - 1))
+        const lenis = (window as any).__lenis
+        if (lenis) lenis.scrollTo(targetY, { duration: 1.2 })
+        else window.scrollTo({ top: targetY, behavior: 'smooth' })
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      cancelAnimationFrame(frameId)
       window.removeEventListener('keydown', handleKeyDown)
-      ScrollTrigger.getById('horizontal-scroll')?.kill()
+      ctx.revert()
     }
   }, [isMobile])
 
@@ -122,15 +114,21 @@ export default function SceneContainer({
     )
   }
 
-  // Desktop: horizontal container
+  // Desktop: CSS Sticky container with horizontal translation track
   return (
-    <div ref={containerRef} className="relative overflow-hidden w-full">
-      <div
-        ref={panelsRef}
-        className="flex h-screen will-change-transform"
-        style={{ width: `${SCENES.length * 100}vw` }}
-      >
-        {children}
+    <div
+      ref={scrollWrapperRef}
+      className="relative w-full"
+      style={{ height: `${SCENES.length * 100}vh` }}
+    >
+      <div className="sticky top-0 h-screen w-full overflow-hidden">
+        <div
+          ref={trackRef}
+          className="flex h-screen will-change-transform"
+          style={{ width: `${SCENES.length * 100}vw` }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   )
