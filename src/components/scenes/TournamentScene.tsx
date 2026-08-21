@@ -24,9 +24,11 @@ export function TournamentScene({
   onNavigate,
 }: TournamentSceneProps) {
   const [filter, setFilter] = useState<'ALL' | 'OPEN' | 'LIVE'>('ALL')
+  const [page, setPage] = useState(0)
+  const CARDS_PER_PAGE = 2
 
   // Filter tournaments
-  const displayedTournaments = useMemo(() => {
+  const filteredTournaments = useMemo(() => {
     if (allTournaments.length === 0 && tournament) {
       return [{ ...tournament, registration_count: registrationCount }]
     }
@@ -39,14 +41,30 @@ export function TournamentScene({
     return allTournaments
   }, [allTournaments, tournament, registrationCount, filter])
 
+  const totalPages = Math.max(1, Math.ceil(filteredTournaments.length / CARDS_PER_PAGE))
+  const currentPage = Math.min(page, totalPages - 1)
+
+  const currentCards = useMemo(() => {
+    const start = currentPage * CARDS_PER_PAGE
+    return filteredTournaments.slice(start, start + CARDS_PER_PAGE)
+  }, [filteredTournaments, currentPage])
+
   const openCount = allTournaments.filter((t) => t.status === 'REGISTRATION_OPEN').length
   const liveCount = allTournaments.filter((t) => t.status === 'LIVE').length
 
+  const handleNextPage = () => {
+    setPage((prev) => (prev + 1) % totalPages)
+  }
+
+  const handlePrevPage = () => {
+    setPage((prev) => (prev - 1 + totalPages) % totalPages)
+  }
+
   return (
-    <div className="w-full h-full flex flex-col justify-center px-6 md:px-14 lg:px-20 bg-transparent text-[#ededed] relative select-none py-12 md:py-0">
-      <div className="max-w-5xl w-full z-10">
+    <div className="w-full h-full flex flex-col justify-center px-6 md:px-14 lg:px-20 bg-transparent text-[#ededed] relative select-none overflow-hidden">
+      <div className="max-w-5xl w-full z-10 mx-auto">
         {/* Header HUD */}
-        <div className="mb-6">
+        <div className="mb-4 md:mb-6">
           <div className="flex items-center gap-3 mb-2">
             <span className="font-mono text-[10px] md:text-xs text-[#ff6600] font-bold tracking-widest uppercase bg-[#ff6600]/10 border border-[#ff6600]/30 px-2.5 py-0.5 rounded">
               02 // TOURNAMENT HUB
@@ -54,7 +72,7 @@ export function TournamentScene({
             <span className="h-px flex-1 max-w-xs bg-gradient-to-r from-[#ff6600]/40 to-transparent" />
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black tracking-tight text-white uppercase">
                 ALL <span className="text-[#ff6600]">TOURNAMENTS</span>
@@ -64,10 +82,13 @@ export function TournamentScene({
               </p>
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-2 font-mono text-xs">
+            {/* Filter Pills & Pagination Controls */}
+            <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
               <button
-                onClick={() => setFilter('ALL')}
+                onClick={() => {
+                  setFilter('ALL')
+                  setPage(0)
+                }}
                 className={`px-3 py-1.5 rounded-lg border transition-all ${
                   filter === 'ALL'
                     ? 'border-[#ff6600] bg-[#ff6600]/20 text-[#ff6600] font-bold'
@@ -77,7 +98,10 @@ export function TournamentScene({
                 ALL ({allTournaments.length})
               </button>
               <button
-                onClick={() => setFilter('OPEN')}
+                onClick={() => {
+                  setFilter('OPEN')
+                  setPage(0)
+                }}
                 className={`px-3 py-1.5 rounded-lg border transition-all ${
                   filter === 'OPEN'
                     ? 'border-[#ff6600] bg-[#ff6600]/20 text-[#ff6600] font-bold'
@@ -88,7 +112,10 @@ export function TournamentScene({
               </button>
               {liveCount > 0 && (
                 <button
-                  onClick={() => setFilter('LIVE')}
+                  onClick={() => {
+                    setFilter('LIVE')
+                    setPage(0)
+                  }}
                   className={`px-3 py-1.5 rounded-lg border transition-all ${
                     filter === 'LIVE'
                       ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold'
@@ -98,14 +125,37 @@ export function TournamentScene({
                   LIVE ({liveCount})
                 </button>
               )}
+
+              {/* Page Switcher */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1 ml-2 border-l border-border pl-2">
+                  <button
+                    onClick={handlePrevPage}
+                    className="w-7 h-7 rounded bg-[#16161c] hover:bg-[#ff6600] text-white hover:text-black border border-border flex items-center justify-center transition-colors text-xs"
+                    aria-label="Previous Page"
+                  >
+                    ←
+                  </button>
+                  <span className="px-2 text-[10px] text-text-muted">
+                    {currentPage + 1}/{totalPages}
+                  </span>
+                  <button
+                    onClick={handleNextPage}
+                    className="w-7 h-7 rounded bg-[#16161c] hover:bg-[#ff6600] text-white hover:text-black border border-border flex items-center justify-center transition-colors text-xs"
+                    aria-label="Next Page"
+                  >
+                    →
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Tournaments Grid */}
-        {displayedTournaments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[62vh] overflow-y-auto pr-2 custom-scrollbar">
-            {displayedTournaments.map((t) => {
+        {/* 2-Card Clean Showcase (Zero Vertical Scroll) */}
+        {currentCards.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {currentCards.map((t) => {
               const isSelected = tournament?.id === t.id
               const maxPlayers = t.max_players || 20
               const regCount = t.registration_count ?? 0
