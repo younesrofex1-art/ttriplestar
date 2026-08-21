@@ -435,6 +435,21 @@ export default function AdminDashboard() {
     return Array.from(grouped.entries()).sort(([a], [b]) => a - b)
   }, [matches])
 
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-[#ededed] flex flex-col items-center justify-center font-mono select-none">
+        <div className="w-10 h-10 border-2 border-[#ff6600] border-t-transparent rounded-full animate-spin mb-4" />
+        <span className="text-xs tracking-widest text-[#ff6600] uppercase">
+          VERIFYING SECURITY CREDENTIALS...
+        </span>
+      </div>
+    )
+  }
+
+  if (!currentUser) {
+    return <AdminLogin onSuccess={checkAuth} />
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#ededed] font-sans">
       {/* Top Cyber Admin Header */}
@@ -501,6 +516,23 @@ export default function AdminDashboard() {
             >
               ← VIEW SITE
             </a>
+
+            {currentUser && (
+              <div className="flex items-center gap-2 pl-2 border-l border-border-strong">
+                <span className="hidden xl:inline-block text-[10px] font-mono text-text-secondary truncate max-w-[150px]">
+                  {currentUser.email}
+                </span>
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut()
+                    setCurrentUser(null)
+                  }}
+                  className="text-xs font-mono bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 px-3 py-2 rounded transition-colors"
+                >
+                  LOGOUT
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
