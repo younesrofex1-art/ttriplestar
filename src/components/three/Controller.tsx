@@ -24,8 +24,8 @@ const SCENE_KEYFRAMES: SceneKeyframe[] = [
   { position: [1.25, -0.05, 0], rotation: [0.35, -0.45, 0.08], scale: 0.95 },
   // Scene 1: TOURNAMENT — Smoothly glides down into the bottom-right corner (compact scale)
   { position: [2.25, -1.25, 0.0], rotation: [-0.15, -0.45, 0.12], scale: 0.40 },
-  // Scene 2: LIVE — Stays tucked in the bottom-right corner (compact scale)
-  { position: [2.25, -1.25, 0.0], rotation: [-0.15, -0.45, 0.12], scale: 0.40 },
+  // Scene 2: LIVE — Positioned on the LEFT side, pushed far left so it does not hide text on the right
+  { position: [-1.55, -0.05, 0.0], rotation: [0.28, 0.45, -0.08], scale: 0.88 },
   // Scene 3: BRACKET — Framed on the right side of the bracket tree
   { position: [1.90, -0.75, -0.05], rotation: [0.15, -0.50, 0.10], scale: 0.55 },
   // Scene 4: RESULTS — Victorious upward tilt beside the podium
