@@ -1,140 +1,274 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useMemo } from 'react'
 import type { Tournament, PublicTournamentState } from '@/lib/types'
+import type { TournamentWithCount } from '@/hooks/use-tournament-data'
 
 interface TournamentSceneProps {
   tournament: Tournament | null
+  allTournaments?: TournamentWithCount[]
   publicState: PublicTournamentState
   registrationCount: number
-  onRegister?: () => void
+  onRegister?: (tourney?: Tournament) => void
+  onSelectTournament?: (tourney: Tournament) => void
   onNavigate?: (index: number) => void
 }
 
 export function TournamentScene({
   tournament,
+  allTournaments = [],
   publicState,
   registrationCount,
   onRegister,
+  onSelectTournament,
   onNavigate,
 }: TournamentSceneProps) {
-  const renderContent = () => {
-    if (publicState === 'NO_EVENT' || !tournament) {
-      return (
-        <div className="space-y-4">
-          <div className="font-mono text-xs text-text-secondary uppercase tracking-[0.25em]">
-            TOURNAMENT SCHEDULE
-          </div>
-          <h2 className="text-4xl md:text-6xl font-display font-extrabold tracking-tight">
-            NO OPEN TOURNAMENT
-          </h2>
-          <div className="font-mono text-text-secondary uppercase tracking-widest text-xs">
-            <div>NEXT EVENT COMING SOON</div>
-            <div className="text-text-muted mt-1">Check back for the next registration window.</div>
-          </div>
-        </div>
-      )
+  const [filter, setFilter] = useState<'ALL' | 'OPEN' | 'LIVE'>('ALL')
+
+  // Filter tournaments
+  const displayedTournaments = useMemo(() => {
+    if (allTournaments.length === 0 && tournament) {
+      return [{ ...tournament, registration_count: registrationCount }]
     }
-
-    if (publicState === 'REGISTRATION_OPEN') {
-      const maxPlayers = tournament.max_players || 32
-      const fee = tournament.entry_fee_mad ? `${tournament.entry_fee_mad} MAD` : 'FREE ENTRY'
-      const gameName = tournament.game?.name || 'FC 26'
-
-      return (
-        <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <span className="status-dot status-online" />
-            <span className="font-mono text-xs text-accent uppercase tracking-[0.25em] font-bold">
-              REGISTRATION OPEN
-            </span>
-          </div>
-
-          <div>
-            <div className="font-mono text-xs text-text-secondary tracking-widest uppercase mb-1">
-              NEXT EVENT
-            </div>
-            <h2 className="text-5xl md:text-7xl font-display font-extrabold tracking-tight leading-none">
-              {tournament.name}
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-4 border-y border-border/80 max-w-lg font-mono text-xs">
-            <div>
-              <div className="text-text-secondary uppercase tracking-wider text-[10px]">GAME</div>
-              <div className="text-text-primary font-bold mt-0.5">{gameName}</div>
-            </div>
-            <div>
-              <div className="text-text-secondary uppercase tracking-wider text-[10px]">ENTRY FEE</div>
-              <div className="text-accent font-bold mt-0.5">{fee}</div>
-            </div>
-            <div>
-              <div className="text-text-secondary uppercase tracking-wider text-[10px]">CAPACITY</div>
-              <div className="text-text-primary font-bold mt-0.5">
-                {registrationCount} / {maxPlayers} SLOTS
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <button
-              onClick={onRegister}
-              className="inline-flex items-center justify-center border border-accent bg-accent/10 hover:bg-accent hover:text-bg text-accent transition-all duration-300 px-10 py-4 font-mono text-xs tracking-[0.25em] uppercase font-bold shadow-[0_0_20px_rgba(255,102,0,0.25)]"
-            >
-              [ REGISTER FOR EVENT ]
-            </button>
-          </div>
-        </div>
-      )
+    if (filter === 'OPEN') {
+      return allTournaments.filter((t) => t.status === 'REGISTRATION_OPEN')
     }
-
-    if (publicState === 'REGISTRATION_CLOSED') {
-      return (
-        <div className="space-y-4">
-          <div className="font-mono text-xs text-text-secondary tracking-widest uppercase">
-            EVENT ROSTER LOCKED
-          </div>
-          <h2 className="text-5xl md:text-7xl font-display font-extrabold tracking-tight">
-            {tournament.name}
-          </h2>
-          <div className="font-mono text-text-secondary tracking-wider text-xs">
-            REGISTRATION CLOSED — {registrationCount} PLAYERS CONFIRMED
-          </div>
-          <div className="pt-4">
-            <button
-              onClick={() => onNavigate?.(3)}
-              className="inline-block border border-border-strong hover:border-accent hover:text-accent transition-colors px-6 py-3 font-mono text-xs tracking-widest uppercase"
-            >
-              VIEW BRACKET
-            </button>
-          </div>
-        </div>
-      )
+    if (filter === 'LIVE') {
+      return allTournaments.filter((t) => t.status === 'LIVE')
     }
+    return allTournaments
+  }, [allTournaments, tournament, registrationCount, filter])
 
-    return (
-      <div className="space-y-4">
-        <h2 className="text-5xl md:text-7xl font-display font-extrabold tracking-tight">
-          {tournament.name}
-        </h2>
-        <div className="font-mono text-accent tracking-widest uppercase text-xs">
-          EVENT {publicState}
-        </div>
-        <div className="pt-4">
-          <button
-            onClick={() => onNavigate?.(publicState === 'LIVE' ? 2 : 4)}
-            className="inline-block border border-border-strong hover:border-accent hover:text-accent transition-colors px-8 py-3.5 font-mono text-xs tracking-widest uppercase"
-          >
-            VIEW {publicState === 'LIVE' ? 'LIVE MATCHES' : 'RESULTS'}
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const openCount = allTournaments.filter((t) => t.status === 'REGISTRATION_OPEN').length
+  const liveCount = allTournaments.filter((t) => t.status === 'LIVE').length
 
   return (
-    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] relative select-none">
-      <div className="relative z-10 max-w-2xl">{renderContent()}</div>
+    <div className="w-full h-full flex flex-col justify-center px-6 md:px-14 lg:px-20 bg-transparent text-[#ededed] relative select-none py-12 md:py-0">
+      <div className="max-w-5xl w-full z-10">
+        {/* Header HUD */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="font-mono text-[10px] md:text-xs text-[#ff6600] font-bold tracking-widest uppercase bg-[#ff6600]/10 border border-[#ff6600]/30 px-2.5 py-0.5 rounded">
+              02 // TOURNAMENT HUB
+            </span>
+            <span className="h-px flex-1 max-w-xs bg-gradient-to-r from-[#ff6600]/40 to-transparent" />
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black tracking-tight text-white uppercase">
+                ALL <span className="text-[#ff6600]">TOURNAMENTS</span>
+              </h2>
+              <p className="font-mono text-xs text-text-secondary mt-1">
+                Browse open registrations, select an active championship, and secure your roster slot.
+              </p>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-2 font-mono text-xs">
+              <button
+                onClick={() => setFilter('ALL')}
+                className={`px-3 py-1.5 rounded-lg border transition-all ${
+                  filter === 'ALL'
+                    ? 'border-[#ff6600] bg-[#ff6600]/20 text-[#ff6600] font-bold'
+                    : 'border-border bg-[#141418]/60 text-text-secondary hover:text-white'
+                }`}
+              >
+                ALL ({allTournaments.length})
+              </button>
+              <button
+                onClick={() => setFilter('OPEN')}
+                className={`px-3 py-1.5 rounded-lg border transition-all ${
+                  filter === 'OPEN'
+                    ? 'border-[#ff6600] bg-[#ff6600]/20 text-[#ff6600] font-bold'
+                    : 'border-border bg-[#141418]/60 text-text-secondary hover:text-white'
+                }`}
+              >
+                OPEN ({openCount})
+              </button>
+              {liveCount > 0 && (
+                <button
+                  onClick={() => setFilter('LIVE')}
+                  className={`px-3 py-1.5 rounded-lg border transition-all ${
+                    filter === 'LIVE'
+                      ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold'
+                      : 'border-border bg-[#141418]/60 text-text-secondary hover:text-white'
+                  }`}
+                >
+                  LIVE ({liveCount})
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tournaments Grid */}
+        {displayedTournaments.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[62vh] overflow-y-auto pr-2 custom-scrollbar">
+            {displayedTournaments.map((t) => {
+              const isSelected = tournament?.id === t.id
+              const maxPlayers = t.max_players || 20
+              const regCount = t.registration_count ?? 0
+              const percentFilled = Math.min(100, Math.round((regCount / maxPlayers) * 100))
+              const fee = t.entry_fee_mad ? `${t.entry_fee_mad} MAD` : 'FREE'
+              const prize = t.prize_pool_mad ? `${t.prize_pool_mad} MAD` : 'TROPHY'
+              const gameName = t.game?.name || 'ESPORTS'
+
+              const isLive = t.status === 'LIVE'
+              const isOpen = t.status === 'REGISTRATION_OPEN'
+              const isFinished = t.status === 'COMPLETED'
+
+              return (
+                <div
+                  key={t.id}
+                  className={`rounded-2xl p-5 backdrop-blur-xl border transition-all duration-300 flex flex-col justify-between ${
+                    isSelected
+                      ? 'bg-[#14141a]/95 border-[#ff6600] shadow-[0_0_25px_rgba(255,102,0,0.25)] ring-1 ring-[#ff6600]/40'
+                      : 'bg-[#0f0f14]/85 border-border hover:border-[#ff6600]/50'
+                  }`}
+                >
+                  <div>
+                    {/* Status & Game Tag */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            isLive
+                              ? 'bg-emerald-500 animate-pulse'
+                              : isOpen
+                              ? 'bg-[#ff6600] animate-pulse'
+                              : 'bg-zinc-500'
+                          }`}
+                        />
+                        <span
+                          className={`font-mono text-[10px] font-bold tracking-wider uppercase ${
+                            isLive
+                              ? 'text-emerald-400'
+                              : isOpen
+                              ? 'text-[#ff6600]'
+                              : 'text-text-muted'
+                          }`}
+                        >
+                          {isLive
+                            ? 'LIVE BROADCAST'
+                            : isOpen
+                            ? 'OPEN REGISTRATION'
+                            : isFinished
+                            ? 'COMPLETED'
+                            : 'ROSTER LOCKED'}
+                        </span>
+                      </div>
+
+                      <span className="font-mono text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-text-secondary uppercase">
+                        {gameName}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="font-display text-lg md:text-xl font-bold text-white tracking-tight mb-2">
+                      {t.name}
+                    </h3>
+
+                    {/* Specs Row */}
+                    <div className="grid grid-cols-2 gap-2 py-2.5 px-3 rounded-xl bg-[#14141a] border border-border/60 mb-3 font-mono text-xs">
+                      <div>
+                        <span className="text-[9px] text-text-muted uppercase block">ENTRY FEE</span>
+                        <span className="text-[#ff6600] font-bold">{fee}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-text-muted uppercase block">PRIZE POOL</span>
+                        <span className="text-white font-bold">{prize}</span>
+                      </div>
+                    </div>
+
+                    {/* Capacity Bar */}
+                    <div className="space-y-1 font-mono text-[11px] mb-4">
+                      <div className="flex justify-between text-text-muted">
+                        <span>ROSTER SLOTS</span>
+                        <span className="text-white font-bold">
+                          {regCount} / {maxPlayers} PLAYERS
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-black/60 rounded-full overflow-hidden border border-border/40">
+                        <div
+                          className="h-full bg-[#ff6600] transition-all duration-500"
+                          style={{ width: `${percentFilled}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-3 border-t border-border/50">
+                    {isOpen ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (onSelectTournament) onSelectTournament(t)
+                            if (onRegister) onRegister(t)
+                          }}
+                          className="flex-1 py-2 px-3 rounded-xl bg-[#ff6600] hover:bg-[#ff7711] text-black font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(255,102,0,0.3)] text-center"
+                        >
+                          REGISTER NOW
+                        </button>
+                        <button
+                          onClick={() => onSelectTournament?.(t)}
+                          className={`py-2 px-3 rounded-xl font-mono text-xs transition-colors border ${
+                            isSelected
+                              ? 'bg-[#ff6600]/20 text-[#ff6600] border-[#ff6600] font-bold'
+                              : 'bg-transparent text-text-secondary border-border hover:border-white'
+                          }`}
+                        >
+                          {isSelected ? '✓ ACTIVE' : 'SELECT'}
+                        </button>
+                      </>
+                    ) : isLive ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (onSelectTournament) onSelectTournament(t)
+                            onNavigate?.(2)
+                          }}
+                          className="flex-1 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs font-bold uppercase tracking-wider transition-all"
+                        >
+                          WATCH LIVE ↗
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (onSelectTournament) onSelectTournament(t)
+                            onNavigate?.(3)
+                          }}
+                          className="py-2 px-3 rounded-xl font-mono text-xs text-text-secondary border border-border hover:border-white transition-colors"
+                        >
+                          BRACKET
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (onSelectTournament) onSelectTournament(t)
+                          onNavigate?.(3)
+                        }}
+                        className="flex-1 py-2 px-3 rounded-xl font-mono text-xs text-text-secondary hover:text-white border border-border hover:border-[#ff6600] transition-colors uppercase tracking-wider"
+                      >
+                        VIEW BRACKET & ROSTER →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="bg-[#121215]/80 border border-border p-8 rounded-2xl text-center space-y-2 max-w-md backdrop-blur-md">
+            <h3 className="text-xl font-display font-bold text-white">NO TOURNAMENTS FOUND</h3>
+            <p className="font-mono text-xs text-text-muted">
+              No tournaments currently match the selected filter.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
+

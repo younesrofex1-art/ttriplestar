@@ -29,8 +29,8 @@ const SCENE_KEYFRAMES: SceneKeyframe[] = [
   { position: [2.10, 0.08, -0.35], rotation: [0.22, -0.60, 0.10], scale: 0.72 },
   // Scene 4: RESULTS / ARCHIVE — Pushed further to the right side of podium
   { position: [1.88, 0.12, 0.0], rotation: [0.28, 0.45, -0.08], scale: 0.94 },
-  // Scene 5: CONNECT / LOCATION — Cyber tilted pose on far right
-  { position: [1.95, -0.05, 0.05], rotation: [0.30, -0.75, 0.15], scale: 0.88 },
+  // Scene 5: CONTACT / CONNECT — Faded / hidden so contact & location grid has full space
+  { position: [2.8, 0.1, -0.8], rotation: [0.25, 0.6, 0.1], scale: 0.0 },
 ]
 
 // Pre-calculated scale factor

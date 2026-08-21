@@ -17,7 +17,7 @@ import { ContactScene } from '@/components/scenes/ContactScene'
 import RegistrationPanel from '@/components/registration/RegistrationPanel'
 import BackgroundVideo from '@/components/background/BackgroundVideo'
 import { useTournament, useMatches, useStreams } from '@/hooks/use-tournament-data'
-import { SCENES } from '@/lib/types'
+import { SCENES, type Tournament } from '@/lib/types'
 
 // Lazy-load the 3D controller scene without SSR
 const ControllerScene = dynamic(
@@ -29,9 +29,16 @@ export default function HomePage() {
   const [activeScene, setActiveScene] = useState(0)
   const [scrollProgress, setScrollProgress] = useState(0)
   const [registrationOpen, setRegistrationOpen] = useState(false)
+  const [registeringTournament, setRegisteringTournament] = useState<Tournament | null>(null)
 
   // Live Supabase data hooks
-  const { tournament, publicState, registrationCount } = useTournament()
+  const {
+    tournament,
+    allTournaments,
+    publicState,
+    registrationCount,
+    selectTournament,
+  } = useTournament()
   const { matches, rounds, liveMatch } = useMatches(tournament?.id)
   const { liveStream } = useStreams(tournament?.id, tournament?.stream_url)
 
@@ -69,12 +76,22 @@ export default function HomePage() {
     }
   }, [])
 
-  const handleOpenRegistration = useCallback(() => {
-    setRegistrationOpen(true)
-  }, [])
+  const handleOpenRegistration = useCallback(
+    (tourney?: Tournament) => {
+      if (tourney) {
+        setRegisteringTournament(tourney)
+        selectTournament(tourney)
+      } else {
+        setRegisteringTournament(tournament)
+      }
+      setRegistrationOpen(true)
+    },
+    [tournament, selectTournament]
+  )
 
   const handleCloseRegistration = useCallback(() => {
     setRegistrationOpen(false)
+    setRegisteringTournament(null)
   }, [])
 
   const hasLive = publicState === 'LIVE'
@@ -108,9 +125,11 @@ export default function HomePage() {
         <ScenePanel id="tournament">
           <TournamentScene
             tournament={tournament}
+            allTournaments={allTournaments}
             publicState={publicState}
             registrationCount={registrationCount}
             onRegister={handleOpenRegistration}
+            onSelectTournament={selectTournament}
             onNavigate={navigateToScene}
           />
         </ScenePanel>
@@ -144,22 +163,19 @@ export default function HomePage() {
           />
         </ScenePanel>
 
-        {/* Scene 06 — Connect, Location & Socials */}
+        {/* Scene 06 — Connect, Location & Support */}
         <ScenePanel id="contact">
           <ContactScene onNavigate={navigateToScene} />
         </ScenePanel>
       </SceneContainer>
 
-      {/* Middle-Right Floating Cyber HUD "Next Section" Trigger */}
-      <NextSceneButton activeScene={activeScene} onNavigate={navigateToScene} />
-
       {/* Bottom Scene Indicators */}
       <SceneIndicator activeScene={activeScene} onNavigate={navigateToScene} />
 
       {/* Registration Slide-in Panel */}
-      {tournament && (
+      {(registeringTournament || tournament) && (
         <RegistrationPanel
-          tournament={tournament}
+          tournament={registeringTournament || tournament!}
           isOpen={registrationOpen}
           onClose={handleCloseRegistration}
         />
