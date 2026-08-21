@@ -61,6 +61,7 @@ export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavP
     { label: 'LIVE', sceneIndex: 2 },
     { label: 'TOURNAMENTS', sceneIndex: 1 },
     { label: 'RESULTS', sceneIndex: 4 },
+    { label: 'CONNECT', sceneIndex: 5 },
   ]
 
   return (

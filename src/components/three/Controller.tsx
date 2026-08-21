@@ -17,18 +17,20 @@ interface SceneKeyframe {
   scale: number
 }
 
-// 5 Keyframes for the continuous horizontal journey (0 to 4)
+// 6 Keyframes for the continuous horizontal journey (0 to 5)
 const SCENE_KEYFRAMES: SceneKeyframe[] = [
   // Scene 0: SYSTEM — Right side hero view
   { position: [1.38, 0, 0], rotation: [0.35, -0.45, 0.08], scale: 0.95 },
-  // Scene 1: TOURNAMENT — Turned inwards showing triggers and lightbar
-  { position: [1.55, -0.1, -0.2], rotation: [-0.15, -0.85, 0.18], scale: 0.85 },
-  // Scene 2: LIVE — Elevated, facing match stats
+  // Scene 1: TOURNAMENT — Faded / hidden so full screen width is dedicated to all open tournaments
+  { position: [2.6, -0.2, -0.8], rotation: [-0.15, -0.85, 0.18], scale: 0.0 },
+  // Scene 2: LIVE — Elevated, facing match stats (smoothly expands back in)
   { position: [1.45, 0.12, 0.08], rotation: [0.35, 0.5, -0.12], scale: 0.92 },
   // Scene 3: BRACKET — Pushed right & scaled cleanly to leave bracket space open
   { position: [2.10, 0.08, -0.35], rotation: [0.22, -0.60, 0.10], scale: 0.72 },
   // Scene 4: RESULTS / ARCHIVE — Pushed further to the right side of podium
   { position: [1.88, 0.12, 0.0], rotation: [0.28, 0.45, -0.08], scale: 0.94 },
+  // Scene 5: CONNECT / LOCATION — Cyber tilted pose on far right
+  { position: [1.95, -0.05, 0.05], rotation: [0.30, -0.75, 0.15], scale: 0.88 },
 ]
 
 // Pre-calculated scale factor

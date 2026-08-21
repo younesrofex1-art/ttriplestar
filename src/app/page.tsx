@@ -13,6 +13,7 @@ import { TournamentScene } from '@/components/scenes/TournamentScene'
 import { LiveScene } from '@/components/scenes/LiveScene'
 import { BracketScene } from '@/components/scenes/BracketScene'
 import { ResultsScene } from '@/components/scenes/ResultsScene'
+import { ContactScene } from '@/components/scenes/ContactScene'
 import RegistrationPanel from '@/components/registration/RegistrationPanel'
 import BackgroundVideo from '@/components/background/BackgroundVideo'
 import { useTournament, useMatches, useStreams } from '@/hooks/use-tournament-data'
@@ -141,6 +142,11 @@ export default function HomePage() {
             matches={matches}
             onNavigate={navigateToScene}
           />
+        </ScenePanel>
+
+        {/* Scene 06 — Connect, Location & Socials */}
+        <ScenePanel id="contact">
+          <ContactScene onNavigate={navigateToScene} />
         </ScenePanel>
       </SceneContainer>
 

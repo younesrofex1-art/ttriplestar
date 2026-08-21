@@ -181,7 +181,7 @@ export function getPublicState(tournament: Tournament | null): PublicTournamentS
 }
 
 /** Scene identifiers for horizontal navigation */
-export type SceneId = 'system' | 'tournament' | 'live' | 'bracket' | 'results'
+export type SceneId = 'system' | 'tournament' | 'live' | 'bracket' | 'results' | 'contact'
 
 export const SCENES: { id: SceneId; label: string }[] = [
   { id: 'system', label: 'SYSTEM' },
@@ -189,4 +189,5 @@ export const SCENES: { id: SceneId; label: string }[] = [
   { id: 'live', label: 'LIVE' },
   { id: 'bracket', label: 'BRACKET' },
   { id: 'results', label: 'RESULTS' },
+  { id: 'contact', label: 'CONNECT' },
 ]
