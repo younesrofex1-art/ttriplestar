@@ -15,19 +15,10 @@ export default function ControllerScene({
   activeScene,
   scrollProgress,
 }: ControllerSceneProps) {
-  const [mounted, setMounted] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return <ControllerLoader />
-  }
-
   return (
-    <div className="fixed inset-0 z-[10] pointer-events-none w-full h-full">
+    <div className="fixed inset-0 z-[10] pointer-events-none w-full h-full select-none">
       {/* HTML Shimmer loader overlay — fades out once 3D model is active */}
       {!isLoaded && <ControllerLoader />}
 
@@ -60,12 +51,6 @@ export default function ControllerScene({
 
         {/* Fill Light — warm fill */}
         <directionalLight position={[-4, 2, 3]} intensity={1.0} color="#ffd4aa" />
-
-        {/* Primary Esports Rim Light — vibrant Triple Stars Neon Orange */}
-        <pointLight position={[-4, -2, -2]} intensity={5.5} color="#ff6600" distance={15} />
-
-        {/* Secondary Lightbar Glow — energetic amber / gold */}
-        <pointLight position={[3, 4, -2]} intensity={4.0} color="#ff9900" distance={12} />
 
         {/* Environment reflections */}
         <Environment preset="night" environmentIntensity={0.6} />

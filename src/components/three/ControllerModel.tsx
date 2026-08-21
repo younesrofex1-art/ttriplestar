@@ -1,16 +1,19 @@
 'use client'
 
 import * as THREE from 'three'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 
 export interface ControllerModelProps extends React.ComponentPropsWithoutRef<'group'> {
+  hoverFactor?: number
   onLoaded?: () => void
 }
 
-export function ControllerModel({ onLoaded, ...props }: ControllerModelProps) {
+export function ControllerModel({ hoverFactor = 0, onLoaded, ...props }: ControllerModelProps) {
   // Load controller model with Drei's built-in Draco decoder
   const { scene } = useGLTF('/models/controller.glb', true)
+  const emissiveMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([])
 
   // Compute bounding box and normalization factor once
   const { scaleFactor } = useMemo(() => {
@@ -30,6 +33,8 @@ export function ControllerModel({ onLoaded, ...props }: ControllerModelProps) {
   // Setup materials once: ensure 100% opaque solid body and glowing neon orange lightbars
   useEffect(() => {
     if (!scene) return
+
+    const emissiveMats: THREE.MeshStandardMaterial[] = []
 
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -56,6 +61,7 @@ export function ControllerModel({ onLoaded, ...props }: ControllerModelProps) {
             mat.metalness = 0.65
             mat.emissive = new THREE.Color('#ff6600')
             mat.emissiveIntensity = 1.3
+            emissiveMats.push(mat)
           } else if (mat.name === '1001' || mesh.name.includes('14')) {
             mat.roughness = 0.45
             mat.metalness = 0.25
@@ -69,8 +75,20 @@ export function ControllerModel({ onLoaded, ...props }: ControllerModelProps) {
       }
     })
 
+    emissiveMaterialsRef.current = emissiveMats
     onLoaded?.()
   }, [scene, onLoaded])
+
+  // Real-time dynamic emissive glow pulse based on hover intensity
+  useFrame((state) => {
+    if (emissiveMaterialsRef.current.length === 0) return
+    const t = state.clock.elapsedTime
+    const pulse = Math.sin(t * 4) * 0.3 * hoverFactor
+    const targetIntensity = 1.2 + hoverFactor * 2.8 + pulse
+    emissiveMaterialsRef.current.forEach((mat) => {
+      mat.emissiveIntensity = targetIntensity
+    })
+  })
 
   if (!scene) return null
 
@@ -83,6 +101,7 @@ export function ControllerModel({ onLoaded, ...props }: ControllerModelProps) {
 }
 
 useGLTF.preload('/models/controller.glb', true)
+
 
 
 

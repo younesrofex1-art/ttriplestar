@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { SCENES } from '@/lib/types'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -11,51 +11,35 @@ interface SceneNavProps {
 }
 
 export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavProps) {
-  const hoverTimeout = useRef<NodeJS.Timeout | null>(null)
+  const handleNavClick = useCallback(
+    (index: number) => {
+      if (onNavigate) {
+        onNavigate(index)
+        return
+      }
 
-  const handleNavClick = useCallback((index: number) => {
-    if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
+      const isMobile = window.innerWidth < 768
 
-    if (onNavigate) {
-      onNavigate(index)
-      return
-    }
-
-    const isMobile = window.innerWidth < 768
-
-    if (isMobile) {
-      const section = document.getElementById(SCENES[index].id)
-      section?.scrollIntoView({ behavior: 'smooth' })
-    } else {
-      const triggers = ScrollTrigger.getAll()
-      const trigger = triggers.find((t) => t.vars.id === 'horizontal-scroll') || triggers[0]
-      if (trigger) {
-        const progress = index / (SCENES.length - 1)
-        const targetY = trigger.start + (trigger.end - trigger.start) * progress
-        const lenis = (window as any).__lenis
-        if (lenis) {
-          lenis.scrollTo(targetY, { duration: 1.0 })
-        } else {
-          window.scrollTo({ top: targetY, behavior: 'smooth' })
+      if (isMobile) {
+        const section = document.getElementById(SCENES[index].id)
+        section?.scrollIntoView({ behavior: 'smooth' })
+      } else {
+        const triggers = ScrollTrigger.getAll()
+        const trigger = triggers.find((t) => t.vars.id === 'horizontal-scroll') || triggers[0]
+        if (trigger) {
+          const progress = index / (SCENES.length - 1)
+          const targetY = trigger.start + (trigger.end - trigger.start) * progress
+          const lenis = (window as unknown as { __lenis?: { scrollTo: (y: number, opts: { duration: number }) => void } }).__lenis
+          if (lenis) {
+            lenis.scrollTo(targetY, { duration: 1.0 })
+          } else {
+            window.scrollTo({ top: targetY, behavior: 'smooth' })
+          }
         }
       }
-    }
-  }, [onNavigate])
-
-  // Navigate on hover with a slight 120ms debounce
-  const handleNavHover = useCallback(
-    (index: number) => {
-      if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
-      hoverTimeout.current = setTimeout(() => {
-        handleNavClick(index)
-      }, 120)
     },
-    [handleNavClick]
+    [onNavigate]
   )
-
-  const handleNavLeave = useCallback(() => {
-    if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
-  }, [])
 
   const navItems = [
     { label: 'LIVE', sceneIndex: 2 },
@@ -74,9 +58,7 @@ export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavP
       {/* Brand Logo / Home */}
       <button
         onClick={() => handleNavClick(0)}
-        onMouseEnter={() => handleNavHover(0)}
-        onMouseLeave={handleNavLeave}
-        className="flex items-center gap-3 text-left group"
+        className="flex items-center gap-3 text-left group cursor-pointer"
         aria-label="Triple Stars - Return to home"
       >
         <span className="font-display text-sm md:text-base font-bold tracking-widest text-text-primary group-hover:text-accent transition-colors">
@@ -93,9 +75,7 @@ export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavP
           <button
             key={item.label}
             onClick={() => handleNavClick(item.sceneIndex)}
-            onMouseEnter={() => handleNavHover(item.sceneIndex)}
-            onMouseLeave={handleNavLeave}
-            className={`font-mono text-xs tracking-wider transition-all relative py-1 ${
+            className={`font-mono text-xs tracking-wider transition-all relative py-1 cursor-pointer ${
               activeScene === item.sceneIndex
                 ? 'text-text-primary font-semibold'
                 : 'text-text-secondary hover:text-text-primary'

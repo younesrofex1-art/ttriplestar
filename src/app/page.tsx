@@ -65,11 +65,12 @@ export default function HomePage() {
     const triggers = ScrollTrigger.getAll()
     const trigger = triggers.find((t) => t.vars.id === 'horizontal-scroll') || triggers[0]
     if (trigger) {
-      const progress = index / (SCENES.length - 1)
+      const boundedIndex = Math.max(0, Math.min(index, SCENES.length - 1))
+      const progress = boundedIndex / (SCENES.length - 1)
       const targetY = trigger.start + (trigger.end - trigger.start) * progress
-      const lenis = (window as any).__lenis
+      const lenis = (window as unknown as { __lenis?: { scrollTo: (y: number, opts: { duration: number }) => void } }).__lenis
       if (lenis) {
-        lenis.scrollTo(targetY, { duration: 1.2 })
+        lenis.scrollTo(targetY, { duration: 0.9 })
       } else {
         window.scrollTo({ top: targetY, behavior: 'smooth' })
       }
@@ -168,6 +169,9 @@ export default function HomePage() {
           <ContactScene onNavigate={navigateToScene} />
         </ScenePanel>
       </SceneContainer>
+
+      {/* Next Scene Quick Navigation Button */}
+      <NextSceneButton activeScene={activeScene} onNavigate={navigateToScene} />
 
       {/* Bottom Scene Indicators */}
       <SceneIndicator activeScene={activeScene} onNavigate={navigateToScene} />

@@ -59,18 +59,12 @@ export default function SceneContainer({
           start: 'top top',
           end: 'bottom bottom',
           scrub: 0.5,
-          snap: {
-            snapTo: 1 / (totalPanels - 1),
-            duration: { min: 0.3, max: 0.7 },
-            delay: 0.05,
-            ease: 'power2.out',
-          },
           invalidateOnRefresh: true,
           onUpdate: (self) => {
             const progress = self.progress
             onScrollProgressRef.current?.(progress)
             const sceneIndex = Math.min(
-              Math.floor(progress * totalPanels),
+              Math.round(progress * (totalPanels - 1)),
               totalPanels - 1
             )
             onSceneChangeRef.current?.(sceneIndex)
@@ -96,17 +90,16 @@ export default function SceneContainer({
         (trigger.end - trigger.start) * (boundedIndex / (totalPanels - 1))
 
       isAnimating = true
-      const lenis = (window as any).__lenis
+      const lenis = (window as unknown as { __lenis?: { scrollTo: (y: number, opts: { duration: number; onComplete?: () => void }) => void } }).__lenis
 
       if (lenis) {
         lenis.scrollTo(targetY, {
-          duration: 1.1,
-          easing: (t: number) => 1 - Math.pow(1 - t, 3), // cubic ease-out
+          duration: 0.9,
           onComplete: () => {
             setTimeout(() => {
               isAnimating = false
               accumulatedDelta = 0
-            }, 120)
+            }, 100)
           },
         })
       } else {
@@ -114,7 +107,7 @@ export default function SceneContainer({
         setTimeout(() => {
           isAnimating = false
           accumulatedDelta = 0
-        }, 850)
+        }, 700)
       }
     }
 
@@ -160,10 +153,10 @@ export default function SceneContainer({
       if (resetDeltaTimer) clearTimeout(resetDeltaTimer)
       resetDeltaTimer = setTimeout(() => {
         accumulatedDelta = 0
-      }, 180)
+      }, 200)
 
       // Threshold to trigger section move
-      if (Math.abs(accumulatedDelta) < 30) return
+      if (Math.abs(accumulatedDelta) < 35) return
 
       const trigger = ScrollTrigger.getById('horizontal-scroll')
       if (!trigger) return
@@ -172,24 +165,15 @@ export default function SceneContainer({
       accumulatedDelta = 0
 
       const currentProgress = trigger.progress
-      const rawIndex = currentProgress * (totalPanels - 1)
-      let nextIndex: number
+      const currentIndex = Math.round(currentProgress * (totalPanels - 1))
+      const nextIndex = Math.max(
+        0,
+        Math.min(currentIndex + direction, totalPanels - 1)
+      )
 
-      if (direction > 0) {
-        nextIndex = Math.min(Math.floor(rawIndex + 0.15) + 1, totalPanels - 1)
-      } else {
-        nextIndex = Math.max(Math.ceil(rawIndex - 0.15) - 1, 0)
+      if (nextIndex !== currentIndex) {
+        scrollToScene(nextIndex)
       }
-
-      if (
-        nextIndex === Math.round(rawIndex) &&
-        ((direction > 0 && nextIndex === totalPanels - 1) ||
-          (direction < 0 && nextIndex === 0))
-      ) {
-        return
-      }
-
-      scrollToScene(nextIndex)
     }
 
     // Touch swipe gestures
