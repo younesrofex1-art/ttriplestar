@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { SCENES } from '@/lib/types'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -11,7 +11,11 @@ interface SceneNavProps {
 }
 
 export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavProps) {
+  const hoverTimeout = useRef<NodeJS.Timeout | null>(null)
+
   const handleNavClick = useCallback((index: number) => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
+
     if (onNavigate) {
       onNavigate(index)
       return
@@ -30,13 +34,28 @@ export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavP
         const targetY = trigger.start + (trigger.end - trigger.start) * progress
         const lenis = (window as any).__lenis
         if (lenis) {
-          lenis.scrollTo(targetY, { duration: 1.2 })
+          lenis.scrollTo(targetY, { duration: 1.0 })
         } else {
           window.scrollTo({ top: targetY, behavior: 'smooth' })
         }
       }
     }
   }, [onNavigate])
+
+  // Navigate on hover with a slight 120ms debounce
+  const handleNavHover = useCallback(
+    (index: number) => {
+      if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
+      hoverTimeout.current = setTimeout(() => {
+        handleNavClick(index)
+      }, 120)
+    },
+    [handleNavClick]
+  )
+
+  const handleNavLeave = useCallback(() => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
+  }, [])
 
   const navItems = [
     { label: 'LIVE', sceneIndex: 2 },
@@ -54,6 +73,8 @@ export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavP
       {/* Brand Logo / Home */}
       <button
         onClick={() => handleNavClick(0)}
+        onMouseEnter={() => handleNavHover(0)}
+        onMouseLeave={handleNavLeave}
         className="flex items-center gap-3 text-left group"
         aria-label="Triple Stars - Return to home"
       >
@@ -71,6 +92,8 @@ export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavP
           <button
             key={item.label}
             onClick={() => handleNavClick(item.sceneIndex)}
+            onMouseEnter={() => handleNavHover(item.sceneIndex)}
+            onMouseLeave={handleNavLeave}
             className={`font-mono text-xs tracking-wider transition-all relative py-1 ${
               activeScene === item.sceneIndex
                 ? 'text-text-primary font-semibold'

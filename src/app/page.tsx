@@ -7,6 +7,7 @@ import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import SceneContainer, { ScenePanel } from '@/components/scenes/SceneContainer'
 import SceneNav from '@/components/navigation/SceneNav'
 import SceneIndicator from '@/components/navigation/SceneIndicator'
+import NextSceneButton from '@/components/navigation/NextSceneButton'
 import { SystemScene } from '@/components/scenes/SystemScene'
 import { TournamentScene } from '@/components/scenes/TournamentScene'
 import { LiveScene } from '@/components/scenes/LiveScene'
@@ -142,6 +143,9 @@ export default function HomePage() {
           />
         </ScenePanel>
       </SceneContainer>
+
+      {/* Middle-Right Floating Cyber HUD "Next Section" Trigger */}
+      <NextSceneButton activeScene={activeScene} onNavigate={navigateToScene} />
 
       {/* Bottom Scene Indicators */}
       <SceneIndicator activeScene={activeScene} onNavigate={navigateToScene} />
