@@ -20,21 +20,49 @@ function getSupabase() {
 
 // ─── useTournament ──────────────────────────────────────────────────
 
-export function useTournament() {
+export function useTournament(tournamentId?: string) {
   const [tournament, setTournament] = useState<Tournament | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [registrationCount, setRegistrationCount] = useState(0)
 
   const fetchTournament = useCallback(async () => {
     const sb = getSupabase()
-    const statusPriority = ['LIVE', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED', 'CHECK_IN', 'COMPLETED']
 
+    if (tournamentId) {
+      const { data, error } = await sb
+        .from('tournaments')
+        .select('*, game:games(*)')
+        .eq('id', tournamentId)
+        .single()
+
+      if (data && !error) {
+        setTournament(data as unknown as Tournament)
+        const { count } = await sb
+          .from('tournament_registrations')
+          .select('*', { count: 'exact', head: true })
+          .eq('tournament_id', data.id)
+
+        setRegistrationCount(count ?? 0)
+        setIsLoading(false)
+        return
+      }
+    }
+
+    const statusPriority = [
+      'LIVE',
+      'REGISTRATION_OPEN',
+      'REGISTRATION_CLOSED',
+      'CHECK_IN',
+      'COMPLETED',
+    ]
+
+    // Find the latest tournament matching status priority (newest created first)
     for (const status of statusPriority) {
       const { data, error } = await sb
         .from('tournaments')
         .select('*, game:games(*)')
         .eq('status', status)
-        .order('start_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(1)
         .single()
 
@@ -52,17 +80,35 @@ export function useTournament() {
       }
     }
 
-    setTournament(null)
-    setRegistrationCount(0)
+    // Fallback: any tournament by created_at desc
+    const { data: fallbackData } = await sb
+      .from('tournaments')
+      .select('*, game:games(*)')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (fallbackData) {
+      setTournament(fallbackData as unknown as Tournament)
+      const { count } = await sb
+        .from('tournament_registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament_id', fallbackData.id)
+      setRegistrationCount(count ?? 0)
+    } else {
+      setTournament(null)
+      setRegistrationCount(0)
+    }
+
     setIsLoading(false)
-  }, [])
+  }, [tournamentId])
 
   useEffect(() => {
     fetchTournament()
 
     const sb = getSupabase()
     const channel = sb
-      .channel('tournament-changes')
+      .channel('tournament-global-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tournaments' },
@@ -82,7 +128,7 @@ export function useTournament() {
 
   const publicState: PublicTournamentState = getPublicState(tournament)
 
-  return { tournament, publicState, registrationCount, isLoading }
+  return { tournament, publicState, registrationCount, isLoading, refresh: fetchTournament }
 }
 
 // ─── useMatches ─────────────────────────────────────────────────────
@@ -104,7 +150,9 @@ export function useMatches(tournamentId: string | undefined) {
     const [matchesRes, roundsRes] = await Promise.all([
       sb
         .from('tournament_matches')
-        .select('*, player1:profiles!tournament_matches_player1_id_fkey(*), player2:profiles!tournament_matches_player2_id_fkey(*), winner:profiles!tournament_matches_winner_id_fkey(*)')
+        .select(
+          '*, player1:profiles!tournament_matches_player1_id_fkey(*), player2:profiles!tournament_matches_player2_id_fkey(*), winner:profiles!tournament_matches_winner_id_fkey(*)'
+        )
         .eq('tournament_id', tournamentId)
         .order('round_number', { ascending: true })
         .order('match_number', { ascending: true }),
@@ -127,13 +175,23 @@ export function useMatches(tournamentId: string | undefined) {
 
     const sb = getSupabase()
     const channel = sb
-      .channel(`matches-${tournamentId}`)
+      .channel(`matches-rounds-${tournamentId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'tournament_matches',
+          filter: `tournament_id=eq.${tournamentId}`,
+        },
+        () => fetchMatches()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tournament_rounds',
           filter: `tournament_id=eq.${tournamentId}`,
         },
         () => fetchMatches()
@@ -147,12 +205,12 @@ export function useMatches(tournamentId: string | undefined) {
 
   const liveMatch = matches.find((m) => m.status === 'live') ?? null
 
-  return { matches, rounds, liveMatch, isLoading }
+  return { matches, rounds, liveMatch, isLoading, refresh: fetchMatches }
 }
 
 // ─── useStreams ──────────────────────────────────────────────────────
 
-export function useStreams(tournamentId: string | undefined) {
+export function useStreams(tournamentId: string | undefined, tournamentStreamUrl?: string | null) {
   const [streams, setStreams] = useState<Stream[]>([])
 
   useEffect(() => {
@@ -193,7 +251,20 @@ export function useStreams(tournamentId: string | undefined) {
     }
   }, [tournamentId])
 
-  const liveStream = streams.find((s) => s.is_live) ?? null
+  const tableLiveStream = streams.find((s) => s.is_live) ?? streams[0] ?? null
+
+  const liveStream: Stream | null = tableLiveStream
+    ? tableLiveStream
+    : tournamentStreamUrl
+    ? ({
+        id: 'tournament-stream',
+        tournament_id: tournamentId || '',
+        stream_url: tournamentStreamUrl,
+        is_live: true,
+        title: 'Live Broadcast',
+      } as unknown as Stream)
+    : null
 
   return { streams, liveStream }
 }
+

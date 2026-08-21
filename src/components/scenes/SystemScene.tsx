@@ -8,7 +8,7 @@ interface SystemSceneProps {
 
 export function SystemScene({ onEnterSystem }: SystemSceneProps) {
   return (
-    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-[#0a0a0a] text-[#ededed] relative overflow-hidden select-none">
+    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] relative overflow-hidden select-none">
       {/* Subtle Grid texture */}
       <div
         className="absolute inset-0 opacity-15 pointer-events-none bg-grid"

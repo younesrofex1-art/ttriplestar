@@ -19,20 +19,20 @@ interface SceneKeyframe {
 
 // 5 Keyframes for the continuous horizontal journey (0 to 4)
 const SCENE_KEYFRAMES: SceneKeyframe[] = [
-  // Scene 0: SYSTEM — Heroic 3/4 angle, dynamic tilt on right side
-  { position: [1.35, -0.05, 0], rotation: [0.35, -0.45, 0.08], scale: 1.05 },
-  // Scene 1: TOURNAMENT — Turned inwards showing top triggers and touchpad
-  { position: [1.75, -0.2, -0.3], rotation: [-0.15, -1.05, 0.22], scale: 0.88 },
-  // Scene 2: LIVE — Elevated, facing left towards match stats with dramatic angle
-  { position: [1.35, 0.2, 0.25], rotation: [0.38, 0.55, -0.15], scale: 0.98 },
-  // Scene 3: BRACKET — Pushed deep into 3D background so bracket data is legible
-  { position: [2.2, -0.05, -1.1], rotation: [-0.25, -2.1, 0.35], scale: 0.68 },
-  // Scene 4: RESULTS — Victorious upward tilt with celebratory pose
-  { position: [1.3, 0.22, 0.1], rotation: [0.25, 0.7, 0.12], scale: 1.1 },
+  // Scene 0: SYSTEM — Right side hero view
+  { position: [1.1, 0, 0], rotation: [0.35, -0.45, 0.08], scale: 0.95 },
+  // Scene 1: TOURNAMENT — Turned inwards showing triggers and lightbar
+  { position: [1.3, -0.1, -0.2], rotation: [-0.15, -0.85, 0.18], scale: 0.85 },
+  // Scene 2: LIVE — Elevated, facing match stats
+  { position: [1.1, 0.15, 0.1], rotation: [0.35, 0.5, -0.12], scale: 0.92 },
+  // Scene 3: BRACKET — Tucked back so bracket is legible
+  { position: [1.5, -0.05, -0.6], rotation: [-0.2, -1.8, 0.25], scale: 0.65 },
+  // Scene 4: RESULTS — Victorious upward tilt
+  { position: [1.05, 0.18, 0.05], rotation: [0.22, 0.6, 0.1], scale: 0.98 },
 ]
 
-// Pre-calculated scale factor to match 3.3 world units prominently
-const MODEL_BASE_SCALE = 1.65
+// Pre-calculated scale factor
+const MODEL_BASE_SCALE = 1.05
 
 export default function Controller({
   activeScene,
@@ -45,13 +45,11 @@ export default function Controller({
   const prefersReducedMotion = useRef(false)
   const mouse = useRef({ x: 0, y: 0 })
   const smoothMouse = useRef({ x: 0, y: 0 })
-  const isHovered = useRef(false)
-  const hoverFactor = useRef(0)
   const currentPos = useRef(new THREE.Vector3(...SCENE_KEYFRAMES[0].position))
   const currentRot = useRef(new THREE.Euler(...SCENE_KEYFRAMES[0].rotation))
   const currentScale = useRef(SCENE_KEYFRAMES[0].scale * MODEL_BASE_SCALE)
 
-  // Track global mouse & hover detection
+  // Track global mouse with passive performance listener
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     prefersReducedMotion.current = mq.matches
@@ -62,16 +60,12 @@ export default function Controller({
     mq.addEventListener('change', mqListener)
 
     const handleMouseMove = (e: MouseEvent) => {
-      const nx = (e.clientX / window.innerWidth) * 2 - 1
-      const ny = -(e.clientY / window.innerHeight) * 2 + 1
-      mouse.current.x = nx
-      mouse.current.y = ny
-
-      // Hover zone: when cursor is on the right half of the screen
-      isHovered.current = nx > 0.05 && Math.abs(ny) < 0.85
+      // Subdued normalized cursor tracking [-0.5 to 0.5]
+      mouse.current.x = ((e.clientX / window.innerWidth) * 2 - 1) * 0.5
+      mouse.current.y = (-(e.clientY / window.innerHeight) * 2 + 1) * 0.5
     }
 
-    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mousemove', handleMouseMove, { passive: true })
 
     return () => {
       mq.removeEventListener('change', mqListener)
@@ -79,7 +73,7 @@ export default function Controller({
     }
   }, [])
 
-  // Continuous frame updates: scroll interpolation + 3D physics + mouse interaction
+  // Continuous frame updates: smooth scroll interpolation + subtle organic physics
   useFrame((state, delta) => {
     if (!rootGroup.current || !motionGroup.current) return
 
@@ -87,12 +81,10 @@ export default function Controller({
 
     // ─── 1. Continuous Scroll Keyframe Interpolation ───────────────────
     const maxIdx = SCENE_KEYFRAMES.length - 1
-    // p is 0.0 to 4.0 based on scroll
     const p = Math.max(0, Math.min(scrollProgress * maxIdx, maxIdx))
     const i = Math.floor(p)
     const nextI = Math.min(i + 1, maxIdx)
     const factor = p - i
-    // Smooth cubic ease between scene keyframes
     const easeT = factor * factor * (3 - 2 * factor)
 
     const kfA = SCENE_KEYFRAMES[i]
@@ -108,8 +100,8 @@ export default function Controller({
 
     const targetScaleVal = THREE.MathUtils.lerp(kfA.scale, kfB.scale, easeT) * MODEL_BASE_SCALE
 
-    // Smoothly lerp root position, rotation, and scale with frame-rate independent easing
-    const lerpSpeed = 1 - Math.exp(-10 * delta)
+    // Soft frame-rate independent easing
+    const lerpSpeed = 1 - Math.exp(-8 * delta)
     currentPos.current.x += (targetPosX - currentPos.current.x) * lerpSpeed
     currentPos.current.y += (targetPosY - currentPos.current.y) * lerpSpeed
     currentPos.current.z += (targetPosZ - currentPos.current.z) * lerpSpeed
@@ -128,33 +120,21 @@ export default function Controller({
       return
     }
 
-    // ─── 2. Mouse Interpolation & Hover Physics ───────────────────────
-    const mouseLerpSpeed = 1 - Math.exp(-7 * delta)
-    smoothMouse.current.x += (mouse.current.x - smoothMouse.current.x) * mouseLerpSpeed
-    smoothMouse.current.y += (mouse.current.y - smoothMouse.current.y) * mouseLerpSpeed
+    // ─── 2. Smooth Damped Mouse & Idle Physics (Zero Stutter) ───────────
+    const mouseDampSpeed = 1 - Math.exp(-3.5 * delta)
+    smoothMouse.current.x += (mouse.current.x - smoothMouse.current.x) * mouseDampSpeed
+    smoothMouse.current.y += (mouse.current.y - smoothMouse.current.y) * mouseDampSpeed
 
-    const targetHover = isHovered.current ? 1 : 0
-    hoverFactor.current += (targetHover - hoverFactor.current) * mouseLerpSpeed
+    // Gentle floating wave (reduced amplitude to prevent disorienting motion)
+    const floatY = Math.sin(t * 0.75) * 0.02
+    const idleSpin = Math.sin(t * 0.25) * 0.04
 
-    // Idle floating wave
-    const floatSpeed = 1.4 + hoverFactor.current * 0.8
-    const floatAmp = 0.07 + hoverFactor.current * 0.04
-    const floatY = Math.sin(t * floatSpeed) * floatAmp
+    // Subtle 3D mouse tilt tracking (damped & gentle)
+    const mousePitch = smoothMouse.current.y * 0.12
+    const mouseYaw = smoothMouse.current.x * 0.12
+    const mouseRoll = -smoothMouse.current.x * 0.05
 
-    // Continuous slow yaw spin so it never looks static
-    const idleSpin = Math.sin(t * 0.4) * 0.15
-
-    // Dynamic 3D mouse tilt tracking (tilts towards cursor with depth)
-    const tiltStrength = 0.4 + hoverFactor.current * 0.35
-    const mousePitch = smoothMouse.current.y * tiltStrength
-    const mouseYaw = smoothMouse.current.x * tiltStrength
-    const mouseRoll = -smoothMouse.current.x * 0.2
-
-    // Hover scale pulse (+12% scale when hovering over the model)
-    const hoverScaleBoost = 1 + hoverFactor.current * 0.12
-    motionGroup.current.scale.setScalar(hoverScaleBoost)
-
-    // Apply combined transformations to motion group
+    // Apply combined transformations
     motionGroup.current.position.y = floatY
     motionGroup.current.rotation.x = currentRot.current.x + mousePitch
     motionGroup.current.rotation.y = currentRot.current.y + idleSpin + mouseYaw

@@ -66,7 +66,7 @@ export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavP
       </button>
 
       {/* Nav links */}
-      <div className="flex items-center gap-6 md:gap-10">
+      <div className="flex items-center gap-6 md:gap-8">
         {navItems.map((item) => (
           <button
             key={item.label}
@@ -87,6 +87,14 @@ export default function SceneNav({ activeScene, hasLive, onNavigate }: SceneNavP
             )}
           </button>
         ))}
+
+        {/* Direct Admin Control Console */}
+        <a
+          href="/admin"
+          className="font-mono text-[11px] font-bold tracking-wider px-3 py-1.5 rounded border border-accent/60 bg-accent/10 text-accent hover:bg-accent hover:text-black transition-all"
+        >
+          ⚙ ADMIN
+        </a>
       </div>
     </nav>
   )

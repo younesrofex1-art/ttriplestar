@@ -8,11 +8,11 @@
   --color-bg-elevated: #161616;
   --color-border: #1a1a1a;
   --color-border-strong: #222222;
-  --color-accent: #00ff88;
-  --color-accent-dim: #00cc6a;
+  --color-accent: #ff6600;
+  --color-accent-dim: #cc5200;
   --color-text-primary: #ededed;
-  --color-text-secondary: #666666;
-  --color-text-muted: #444444;
+  --color-text-secondary: #888888;
+  --color-text-muted: #555555;
   --color-live: #ff3333;
   --color-warning: #ffaa00;
 
@@ -79,7 +79,7 @@ body {
 .status-online {
   background-color: var(--color-accent);
   box-shadow: 0 0 8px var(--color-accent);
-  animation: pulse-green 2s ease-in-out infinite;
+  animation: pulse-orange 2s ease-in-out infinite;
 }
 
 .status-live {
@@ -94,7 +94,7 @@ body {
   animation: pulse-yellow 2s ease-in-out infinite;
 }
 
-@keyframes pulse-green {
+@keyframes pulse-orange {
   0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--color-accent); }
   50% { opacity: 0.6; box-shadow: 0 0 16px var(--color-accent); }
 }
@@ -143,7 +143,7 @@ body {
 /* ─── Selection ────────────────────────────────────────────────────── */
 
 ::selection {
-  background-color: rgba(0, 255, 136, 0.2);
+  background-color: rgba(255, 102, 0, 0.25);
   color: var(--color-text-primary);
 }
 

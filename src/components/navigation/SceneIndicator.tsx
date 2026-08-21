@@ -26,7 +26,7 @@ export default function SceneIndicator({ activeScene, onNavigate }: SceneIndicat
           <div
             className={`h-1.5 rounded-full transition-all duration-300 ${
               index === activeScene
-                ? 'w-8 bg-accent shadow-[0_0_10px_rgba(0,255,136,0.5)]'
+                ? 'w-8 bg-accent shadow-[0_0_10px_rgba(255,102,0,0.6)]'
                 : 'w-2 bg-border-strong group-hover:bg-text-secondary group-hover:w-4'
             }`}
           />

@@ -79,7 +79,7 @@ export function TournamentScene({
           <div className="pt-2">
             <button
               onClick={onRegister}
-              className="inline-flex items-center justify-center border border-accent bg-accent/10 hover:bg-accent hover:text-bg text-accent transition-all duration-300 px-10 py-4 font-mono text-xs tracking-[0.25em] uppercase font-bold shadow-[0_0_20px_rgba(0,255,136,0.15)]"
+              className="inline-flex items-center justify-center border border-accent bg-accent/10 hover:bg-accent hover:text-bg text-accent transition-all duration-300 px-10 py-4 font-mono text-xs tracking-[0.25em] uppercase font-bold shadow-[0_0_20px_rgba(255,102,0,0.25)]"
             >
               [ REGISTER FOR EVENT ]
             </button>
@@ -133,7 +133,7 @@ export function TournamentScene({
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-[#0a0a0a] text-[#ededed] relative select-none">
+    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] relative select-none">
       <div className="relative z-10 max-w-2xl">{renderContent()}</div>
     </div>
   )

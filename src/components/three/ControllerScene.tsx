@@ -33,7 +33,7 @@ export default function ControllerScene({
 
       <Canvas
         camera={{ position: [0, 0, 5], fov: 45 }}
-        dpr={[1, 1.5]}
+        dpr={[1, 1.25]}
         gl={{
           antialias: true,
           alpha: true,
@@ -53,25 +53,22 @@ export default function ControllerScene({
         <AdaptiveDpr pixelated />
 
         {/* Ambient base lighting */}
-        <ambientLight intensity={0.8} />
+        <ambientLight intensity={0.9} />
 
-        {/* Key Light — crisp directional illumination for 3D depth and specular highlights */}
-        <directionalLight position={[6, 8, 5]} intensity={2.8} color="#ffffff" />
+        {/* Key Light — crisp directional illumination */}
+        <directionalLight position={[5, 6, 4]} intensity={2.2} color="#ffffff" />
 
-        {/* Fill Light — soft cool blue from front-left */}
-        <directionalLight position={[-5, 2, 4]} intensity={1.2} color="#a0c8ff" />
+        {/* Fill Light — warm fill */}
+        <directionalLight position={[-4, 2, 3]} intensity={1.0} color="#ffd4aa" />
 
-        {/* Primary Esports Rim Light — vibrant Triple Stars green */}
-        <pointLight position={[-5, -2, -3]} intensity={6.0} color="#00ff88" distance={16} />
+        {/* Primary Esports Rim Light — vibrant Triple Stars Neon Orange */}
+        <pointLight position={[-4, -2, -2]} intensity={5.5} color="#ff6600" distance={15} />
 
-        {/* Secondary Lightbar Glow — electric cyan from top-rear */}
-        <pointLight position={[3, 5, -3]} intensity={4.5} color="#00e5ff" distance={14} />
+        {/* Secondary Lightbar Glow — energetic amber / gold */}
+        <pointLight position={[3, 4, -2]} intensity={4.0} color="#ff9900" distance={12} />
 
-        {/* Under-glow Bounce Light */}
-        <pointLight position={[1, -4, 2]} intensity={2.0} color="#ffffff" distance={10} />
-
-        {/* Environment reflections for realistic glossy and metallic surfaces */}
-        <Environment preset="night" environmentIntensity={0.8} />
+        {/* Environment reflections */}
+        <Environment preset="night" environmentIntensity={0.6} />
 
         {/* 3D Controller with continuous scroll interpolation & interactive 3D physics */}
         <Suspense fallback={null}>

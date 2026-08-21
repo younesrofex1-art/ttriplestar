@@ -41,7 +41,7 @@ export default function SceneContainer({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Desktop horizontal translation driven by CSS sticky + GSAP scrub (ZERO pin-spacer DOM reparenting)
+  // Desktop horizontal translation driven by CSS sticky + GSAP scrub + Section Snapping
   useEffect(() => {
     if (isMobile || !trackRef.current || !scrollWrapperRef.current) return
 
@@ -58,7 +58,13 @@ export default function SceneContainer({
           trigger: scrollWrapper,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: 0.8,
+          scrub: 0.5,
+          snap: {
+            snapTo: 1 / (totalPanels - 1),
+            duration: { min: 0.3, max: 0.7 },
+            delay: 0.05,
+            ease: 'power2.out',
+          },
           invalidateOnRefresh: true,
           onUpdate: (self) => {
             const progress = self.progress
@@ -75,49 +81,192 @@ export default function SceneContainer({
 
     ScrollTrigger.refresh()
 
+    // Smooth section transition helper
+    let isAnimating = false
+    let accumulatedDelta = 0
+    let resetDeltaTimer: NodeJS.Timeout | null = null
+
+    const scrollToScene = (targetIndex: number) => {
+      const trigger = ScrollTrigger.getById('horizontal-scroll')
+      if (!trigger) return
+
+      const boundedIndex = Math.max(0, Math.min(targetIndex, totalPanels - 1))
+      const targetY =
+        trigger.start +
+        (trigger.end - trigger.start) * (boundedIndex / (totalPanels - 1))
+
+      isAnimating = true
+      const lenis = (window as any).__lenis
+
+      if (lenis) {
+        lenis.scrollTo(targetY, {
+          duration: 1.1,
+          easing: (t: number) => 1 - Math.pow(1 - t, 3), // cubic ease-out
+          onComplete: () => {
+            setTimeout(() => {
+              isAnimating = false
+              accumulatedDelta = 0
+            }, 120)
+          },
+        })
+      } else {
+        window.scrollTo({ top: targetY, behavior: 'smooth' })
+        setTimeout(() => {
+          isAnimating = false
+          accumulatedDelta = 0
+        }, 850)
+      }
+    }
+
+    // Wheel listener for snappy, one-section-per-scroll feel
+    const handleWheel = (e: WheelEvent) => {
+      // Allow scrolling inside dialogs/modals
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const dialog = target.closest('[role="dialog"]')
+        if (dialog) return
+
+        const scrollable = target.closest(
+          '.overflow-y-auto, .overflow-x-auto'
+        ) as HTMLElement | null
+        if (scrollable) {
+          const isScrollableY =
+            scrollable.scrollHeight > scrollable.clientHeight + 2
+          const isScrollableX =
+            scrollable.scrollWidth > scrollable.clientWidth + 2
+          if (isScrollableY && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            const atTop = scrollable.scrollTop <= 0 && e.deltaY < 0
+            const atBottom =
+              scrollable.scrollTop + scrollable.clientHeight >=
+                scrollable.scrollHeight - 2 && e.deltaY > 0
+            if (!atTop && !atBottom) return
+          }
+          if (isScrollableX && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+            const atLeft = scrollable.scrollLeft <= 0 && e.deltaX < 0
+            const atRight =
+              scrollable.scrollLeft + scrollable.clientWidth >=
+                scrollable.scrollWidth - 2 && e.deltaX > 0
+            if (!atLeft && !atRight) return
+          }
+        }
+      }
+
+      e.preventDefault()
+
+      if (isAnimating) return
+
+      accumulatedDelta += e.deltaY
+
+      if (resetDeltaTimer) clearTimeout(resetDeltaTimer)
+      resetDeltaTimer = setTimeout(() => {
+        accumulatedDelta = 0
+      }, 180)
+
+      // Threshold to trigger section move
+      if (Math.abs(accumulatedDelta) < 30) return
+
+      const trigger = ScrollTrigger.getById('horizontal-scroll')
+      if (!trigger) return
+
+      const direction = accumulatedDelta > 0 ? 1 : -1
+      accumulatedDelta = 0
+
+      const currentProgress = trigger.progress
+      const rawIndex = currentProgress * (totalPanels - 1)
+      let nextIndex: number
+
+      if (direction > 0) {
+        nextIndex = Math.min(Math.floor(rawIndex + 0.15) + 1, totalPanels - 1)
+      } else {
+        nextIndex = Math.max(Math.ceil(rawIndex - 0.15) - 1, 0)
+      }
+
+      if (
+        nextIndex === Math.round(rawIndex) &&
+        ((direction > 0 && nextIndex === totalPanels - 1) ||
+          (direction < 0 && nextIndex === 0))
+      ) {
+        return
+      }
+
+      scrollToScene(nextIndex)
+    }
+
+    // Touch swipe gestures
+    let touchStartY = 0
+    let touchStartX = 0
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY
+      touchStartX = e.touches[0].clientX
+    }
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (isAnimating) return
+      const touchEndY = e.changedTouches[0].clientY
+      const touchEndX = e.changedTouches[0].clientX
+      const diffY = touchStartY - touchEndY
+      const diffX = touchStartX - touchEndX
+
+      const diff = Math.abs(diffY) > Math.abs(diffX) ? diffY : diffX
+      if (Math.abs(diff) < 40) return
+
+      const trigger = ScrollTrigger.getById('horizontal-scroll')
+      if (!trigger) return
+
+      const direction = diff > 0 ? 1 : -1
+      const currentProgress = trigger.progress
+      const currentIndex = Math.round(currentProgress * (totalPanels - 1))
+      const nextIndex = Math.max(
+        0,
+        Math.min(currentIndex + direction, totalPanels - 1)
+      )
+
+      if (nextIndex !== currentIndex) {
+        scrollToScene(nextIndex)
+      }
+    }
+
     // Keyboard arrow navigation support
     const handleKeyDown = (e: KeyboardEvent) => {
       const trigger = ScrollTrigger.getById('horizontal-scroll')
       if (!trigger) return
 
-      if (['ArrowRight', 'ArrowDown', 'PageDown'].includes(e.key)) {
+      if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) {
         e.preventDefault()
         const currentProgress = trigger.progress
         const currentIndex = Math.round(currentProgress * (totalPanels - 1))
         const nextIndex = Math.min(currentIndex + 1, totalPanels - 1)
-        const targetY =
-          trigger.start +
-          (trigger.end - trigger.start) * (nextIndex / (totalPanels - 1))
-        const lenis = (window as any).__lenis
-        if (lenis) lenis.scrollTo(targetY, { duration: 1.2 })
-        else window.scrollTo({ top: targetY, behavior: 'smooth' })
+        scrollToScene(nextIndex)
       } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) {
         e.preventDefault()
         const currentProgress = trigger.progress
         const currentIndex = Math.round(currentProgress * (totalPanels - 1))
         const prevIndex = Math.max(currentIndex - 1, 0)
-        const targetY =
-          trigger.start +
-          (trigger.end - trigger.start) * (prevIndex / (totalPanels - 1))
-        const lenis = (window as any).__lenis
-        if (lenis) lenis.scrollTo(targetY, { duration: 1.2 })
-        else window.scrollTo({ top: targetY, behavior: 'smooth' })
+        scrollToScene(prevIndex)
       }
     }
 
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd, { passive: true })
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
+      if (resetDeltaTimer) clearTimeout(resetDeltaTimer)
+      window.removeEventListener('wheel', handleWheel)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchend', handleTouchEnd)
       window.removeEventListener('keydown', handleKeyDown)
       ctx.revert()
     }
   }, [isMobile])
 
-  // Mobile: vertical layout
+  // Mobile: vertical layout with native scroll snapping
   if (isMobile) {
     return (
       <div className="w-full">
-        <div className="flex flex-col">{children}</div>
+        <div className="flex flex-col snap-y snap-mandatory">{children}</div>
       </div>
     )
   }
@@ -154,10 +303,11 @@ export function ScenePanel({ id, children, className = '' }: ScenePanelProps) {
   return (
     <div
       id={id}
-      className={`relative w-screen h-screen flex-shrink-0 overflow-hidden ${className}`}
+      className={`relative w-screen h-screen flex-shrink-0 overflow-hidden snap-start ${className}`}
       aria-label={`${id} scene`}
     >
       {children}
     </div>
   )
 }
+

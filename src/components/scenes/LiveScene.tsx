@@ -106,9 +106,9 @@ export function LiveScene({
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-          {liveStream?.stream_url ? (
+          {(liveStream?.stream_url || tournament?.stream_url) ? (
             <a
-              href={liveStream.stream_url}
+              href={liveStream?.stream_url || tournament?.stream_url || '#'}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2.5 border border-live bg-live/10 text-live hover:bg-live hover:text-white transition-all px-8 py-3.5 font-mono text-xs tracking-widest uppercase font-bold"
@@ -134,7 +134,7 @@ export function LiveScene({
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-[#0a0a0a] text-[#ededed] relative select-none">
+    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] relative select-none">
       <div className="relative z-10 w-full">{renderContent()}</div>
     </div>
   )

@@ -13,6 +13,7 @@ import { LiveScene } from '@/components/scenes/LiveScene'
 import { BracketScene } from '@/components/scenes/BracketScene'
 import { ResultsScene } from '@/components/scenes/ResultsScene'
 import RegistrationPanel from '@/components/registration/RegistrationPanel'
+import BackgroundVideo from '@/components/background/BackgroundVideo'
 import { useTournament, useMatches, useStreams } from '@/hooks/use-tournament-data'
 import { SCENES } from '@/lib/types'
 
@@ -30,7 +31,7 @@ export default function HomePage() {
   // Live Supabase data hooks
   const { tournament, publicState, registrationCount } = useTournament()
   const { matches, rounds, liveMatch } = useMatches(tournament?.id)
-  const { liveStream } = useStreams(tournament?.id)
+  const { liveStream } = useStreams(tournament?.id, tournament?.stream_url)
 
   const handleSceneChange = useCallback((index: number) => {
     setActiveScene(index)
@@ -78,6 +79,9 @@ export default function HomePage() {
 
   return (
     <SmoothScrollProvider>
+      {/* Dark Ambient Video Background */}
+      <BackgroundVideo />
+
       {/* Top Navigation Bar */}
       <SceneNav
         activeScene={activeScene}

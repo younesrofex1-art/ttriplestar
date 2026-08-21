@@ -1,87 +1,88 @@
 'use client'
 
 import * as THREE from 'three'
-import React, { useMemo, useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
-import { GLTF } from 'three-stdlib'
-
-type GLTFResult = GLTF & {
-  nodes: {
-    Object_11: THREE.Mesh
-    Object_14: THREE.Mesh
-    Object_17: THREE.Mesh
-  }
-  materials: {
-    ['1011']: THREE.MeshPhysicalMaterial
-    ['1001']: THREE.MeshPhysicalMaterial
-    ['1002']: THREE.MeshStandardMaterial
-  }
-}
 
 export interface ControllerModelProps extends React.ComponentPropsWithoutRef<'group'> {
   onLoaded?: () => void
 }
 
 export function ControllerModel({ onLoaded, ...props }: ControllerModelProps) {
-  const { nodes, materials } = useGLTF('/models/controller.glb', '/draco/') as unknown as GLTFResult
+  // Load controller model with Drei's built-in Draco decoder
+  const { scene } = useGLTF('/models/controller.glb', true)
 
-  // Enhance materials for realistic 3D sheen, specular highlights, and high-performance rendering
-  useMemo(() => {
-    if (materials['1011']) {
-      materials['1011'].roughness = 0.2
-      materials['1011'].metalness = 0.75
-      materials['1011'].envMapIntensity = 1.2
-      materials['1011'].needsUpdate = true
-    }
-    if (materials['1001']) {
-      materials['1001'].roughness = 0.25
-      materials['1001'].metalness = 0.6
-      materials['1001'].envMapIntensity = 1.2
-      materials['1001'].needsUpdate = true
-    }
-    if (materials['1002']) {
-      materials['1002'].roughness = 0.35
-      materials['1002'].metalness = 0.15
-      materials['1002'].envMapIntensity = 1.0
-      materials['1002'].needsUpdate = true
-    }
-  }, [materials])
+  // Compute bounding box and normalization factor once
+  const { scaleFactor } = useMemo(() => {
+    if (!scene) return { scaleFactor: 1 }
 
+    const box = new THREE.Box3().setFromObject(scene)
+    const center = box.getCenter(new THREE.Vector3())
+    const size = box.getSize(new THREE.Vector3())
+
+    // Center geometry at origin so rotations pivot naturally
+    scene.position.set(-center.x, -center.y, -center.z)
+
+    const maxDim = Math.max(size.x, size.y, size.z)
+    return { scaleFactor: maxDim > 0 ? 2.4 / maxDim : 1 }
+  }, [scene])
+
+  // Setup materials once: ensure 100% opaque solid body and glowing neon orange lightbars
   useEffect(() => {
-    if (nodes && onLoaded) {
-      onLoaded()
-    }
-  }, [nodes, onLoaded])
+    if (!scene) return
+
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh
+        mesh.castShadow = false
+        mesh.receiveShadow = false
+
+        if (mesh.material) {
+          const mat = mesh.material as THREE.MeshStandardMaterial
+
+          mat.transparent = false
+          mat.opacity = 1.0
+          mat.depthWrite = true
+
+          const dynMat = mat as unknown as { transmission?: number; thickness?: number }
+          if (dynMat.transmission !== undefined) {
+            dynMat.transmission = 0
+            dynMat.thickness = 0
+          }
+
+          // Apply rich dark charcoal finishes with specular gloss and glowing neon orange lightbars
+          if (mat.name === '1011' || mesh.name.includes('11')) {
+            mat.roughness = 0.25
+            mat.metalness = 0.65
+            mat.emissive = new THREE.Color('#ff6600')
+            mat.emissiveIntensity = 1.3
+          } else if (mat.name === '1001' || mesh.name.includes('14')) {
+            mat.roughness = 0.45
+            mat.metalness = 0.25
+          } else {
+            mat.roughness = 0.35
+            mat.metalness = 0.45
+          }
+
+          mat.needsUpdate = true
+        }
+      }
+    })
+
+    onLoaded?.()
+  }, [scene, onLoaded])
+
+  if (!scene) return null
 
   return (
-    <group {...props} dispose={null}>
-      <mesh
-        castShadow
-        receiveShadow
-        geometry={nodes.Object_11.geometry}
-        material={materials['1011']}
-        rotation={[0, -0.007, 0.001]}
-        scale={0.196}
-      />
-      <mesh
-        castShadow
-        receiveShadow
-        geometry={nodes.Object_14.geometry}
-        material={materials['1001']}
-        rotation={[0, -0.007, 0.001]}
-        scale={0.196}
-      />
-      <mesh
-        castShadow
-        receiveShadow
-        geometry={nodes.Object_17.geometry}
-        material={materials['1002']}
-        rotation={[0, -0.007, 0.001]}
-        scale={0.196}
-      />
+    <group {...props} scale={scaleFactor} dispose={null}>
+      {/* dispose={null} prevents R3F from destroying geometry buffers during re-renders */}
+      <primitive object={scene} dispose={null} />
     </group>
   )
 }
 
-useGLTF.preload('/models/controller.glb', '/draco/')
+useGLTF.preload('/models/controller.glb', true)
+
+
 
