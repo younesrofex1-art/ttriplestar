@@ -20,88 +20,74 @@ function getSupabase() {
 
 // ─── useTournament ──────────────────────────────────────────────────
 
-export function useTournament(tournamentId?: string) {
+export interface TournamentWithCount extends Tournament {
+  registration_count?: number
+}
+
+export function useTournament(initialTournamentId?: string) {
   const [tournament, setTournament] = useState<Tournament | null>(null)
+  const [allTournaments, setAllTournaments] = useState<TournamentWithCount[]>([])
+  const [selectedId, setSelectedId] = useState<string | undefined>(initialTournamentId)
   const [isLoading, setIsLoading] = useState(true)
   const [registrationCount, setRegistrationCount] = useState(0)
 
   const fetchTournament = useCallback(async () => {
     const sb = getSupabase()
 
-    if (tournamentId) {
-      const { data, error } = await sb
-        .from('tournaments')
-        .select('*, game:games(*)')
-        .eq('id', tournamentId)
-        .single()
-
-      if (data && !error) {
-        setTournament(data as unknown as Tournament)
-        const { count } = await sb
-          .from('tournament_registrations')
-          .select('*', { count: 'exact', head: true })
-          .eq('tournament_id', data.id)
-
-        setRegistrationCount(count ?? 0)
-        setIsLoading(false)
-        return
-      }
-    }
-
-    const statusPriority = [
-      'LIVE',
-      'REGISTRATION_OPEN',
-      'REGISTRATION_CLOSED',
-      'CHECK_IN',
-      'COMPLETED',
-    ]
-
-    // Find the latest tournament matching status priority (newest created first)
-    for (const status of statusPriority) {
-      const { data, error } = await sb
-        .from('tournaments')
-        .select('*, game:games(*)')
-        .eq('status', status)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (data && !error) {
-        setTournament(data as unknown as Tournament)
-
-        const { count } = await sb
-          .from('tournament_registrations')
-          .select('*', { count: 'exact', head: true })
-          .eq('tournament_id', data.id)
-
-        setRegistrationCount(count ?? 0)
-        setIsLoading(false)
-        return
-      }
-    }
-
-    // Fallback: any tournament by created_at desc
-    const { data: fallbackData } = await sb
+    // Fetch all tournaments
+    const { data: allData } = await sb
       .from('tournaments')
       .select('*, game:games(*)')
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
 
-    if (fallbackData) {
-      setTournament(fallbackData as unknown as Tournament)
-      const { count } = await sb
-        .from('tournament_registrations')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', fallbackData.id)
-      setRegistrationCount(count ?? 0)
+    const list: TournamentWithCount[] = (allData as unknown as TournamentWithCount[]) || []
+
+    if (list.length > 0) {
+      const countsPromises = list.map(async (t) => {
+        const { count } = await sb
+          .from('tournament_registrations')
+          .select('*', { count: 'exact', head: true })
+          .eq('tournament_id', t.id)
+        return { id: t.id, count: count ?? 0 }
+      })
+      const counts = await Promise.all(countsPromises)
+      const countMap = new Map(counts.map((c) => [c.id, c.count]))
+      list.forEach((t) => {
+        t.registration_count = countMap.get(t.id) ?? 0
+      })
+    }
+
+    setAllTournaments(list)
+
+    // Find active / chosen tournament
+    let chosen: TournamentWithCount | null = null
+
+    if (selectedId) {
+      chosen = list.find((t) => t.id === selectedId) || null
+    }
+
+    if (!chosen && list.length > 0) {
+      const statusPriority = ['LIVE', 'REGISTRATION_OPEN', 'CHECK_IN', 'REGISTRATION_CLOSED', 'COMPLETED']
+      for (const st of statusPriority) {
+        const found = list.find((t) => t.status === st)
+        if (found) {
+          chosen = found
+          break
+        }
+      }
+      if (!chosen) chosen = list[0]
+    }
+
+    if (chosen) {
+      setTournament(chosen)
+      setRegistrationCount(chosen.registration_count ?? 0)
     } else {
       setTournament(null)
       setRegistrationCount(0)
     }
 
     setIsLoading(false)
-  }, [tournamentId])
+  }, [selectedId])
 
   useEffect(() => {
     fetchTournament()
@@ -126,9 +112,22 @@ export function useTournament(tournamentId?: string) {
     }
   }, [fetchTournament])
 
+  const selectTournament = useCallback((t: Tournament) => {
+    setSelectedId(t.id)
+    setTournament(t)
+  }, [])
+
   const publicState: PublicTournamentState = getPublicState(tournament)
 
-  return { tournament, publicState, registrationCount, isLoading, refresh: fetchTournament }
+  return {
+    tournament,
+    allTournaments,
+    publicState,
+    registrationCount,
+    isLoading,
+    selectTournament,
+    refresh: fetchTournament,
+  }
 }
 
 // ─── useMatches ─────────────────────────────────────────────────────

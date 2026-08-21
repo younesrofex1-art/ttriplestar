@@ -47,11 +47,13 @@ export default function Controller({
   const prefersReducedMotion = useRef(false)
   const mouse = useRef({ x: 0, y: 0 })
   const smoothMouse = useRef({ x: 0, y: 0 })
+  const isHovered = useRef(false)
+  const hoverFactor = useRef(0)
   const currentPos = useRef(new THREE.Vector3(...SCENE_KEYFRAMES[0].position))
   const currentRot = useRef(new THREE.Euler(...SCENE_KEYFRAMES[0].rotation))
   const currentScale = useRef(SCENE_KEYFRAMES[0].scale * MODEL_BASE_SCALE)
 
-  // Track global mouse with passive performance listener
+  // Track global mouse & hover detection with passive performance listener
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     prefersReducedMotion.current = mq.matches
@@ -62,9 +64,13 @@ export default function Controller({
     mq.addEventListener('change', mqListener)
 
     const handleMouseMove = (e: MouseEvent) => {
-      // Subdued normalized cursor tracking [-0.5 to 0.5]
-      mouse.current.x = ((e.clientX / window.innerWidth) * 2 - 1) * 0.5
-      mouse.current.y = (-(e.clientY / window.innerHeight) * 2 + 1) * 0.5
+      const nx = (e.clientX / window.innerWidth) * 2 - 1
+      const ny = -(e.clientY / window.innerHeight) * 2 + 1
+      mouse.current.x = nx
+      mouse.current.y = ny
+
+      // Detect if cursor is near the controller zone on the right side
+      isHovered.current = nx > 0.05 && Math.abs(ny) < 0.85
     }
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true })
@@ -75,7 +81,7 @@ export default function Controller({
     }
   }, [])
 
-  // Continuous frame updates: smooth scroll interpolation + subtle organic physics
+  // Continuous frame updates: smooth scroll interpolation + responsive 3D hover physics
   useFrame((state, delta) => {
     if (!rootGroup.current || !motionGroup.current) return
 
@@ -122,22 +128,32 @@ export default function Controller({
       return
     }
 
-    // ─── 2. Smooth Damped Mouse & Idle Physics (Zero Stutter) ───────────
-    const mouseDampSpeed = 1 - Math.exp(-3.5 * delta)
+    // ─── 2. Smooth Damped Mouse & Interactive Hover Physics ─────────────
+    const mouseDampSpeed = 1 - Math.exp(-4.5 * delta)
     smoothMouse.current.x += (mouse.current.x - smoothMouse.current.x) * mouseDampSpeed
     smoothMouse.current.y += (mouse.current.y - smoothMouse.current.y) * mouseDampSpeed
 
-    // Gentle floating wave (reduced amplitude to prevent disorienting motion)
-    const floatY = Math.sin(t * 0.75) * 0.02
-    const idleSpin = Math.sin(t * 0.25) * 0.04
+    // Smooth hover factor lerping
+    const targetHover = isHovered.current ? 1 : 0
+    hoverFactor.current += (targetHover - hoverFactor.current) * mouseDampSpeed
 
-    // Subtle 3D mouse tilt tracking (damped & gentle)
-    const mousePitch = smoothMouse.current.y * 0.12
-    const mouseYaw = smoothMouse.current.x * 0.12
-    const mouseRoll = -smoothMouse.current.x * 0.05
+    // Gentle floating wave (organically amplifies on hover)
+    const floatY = Math.sin(t * 1.1) * (0.035 + hoverFactor.current * 0.02)
+    const idleSpin = Math.sin(t * 0.35) * 0.06
+
+    // Interactive 3D mouse tilt tracking (responsive & silky smooth)
+    const tiltStrength = 0.22 + hoverFactor.current * 0.15
+    const mousePitch = smoothMouse.current.y * tiltStrength
+    const mouseYaw = smoothMouse.current.x * tiltStrength
+    const mouseRoll = -smoothMouse.current.x * (0.08 + hoverFactor.current * 0.06)
+
+    // Subtle hover depth and scale lift (+5% scale and slight forward lift)
+    const hoverScale = 1 + hoverFactor.current * 0.05
+    motionGroup.current.scale.setScalar(hoverScale)
 
     // Apply combined transformations
     motionGroup.current.position.y = floatY
+    motionGroup.current.position.z = hoverFactor.current * 0.12
     motionGroup.current.rotation.x = currentRot.current.x + mousePitch
     motionGroup.current.rotation.y = currentRot.current.y + idleSpin + mouseYaw
     motionGroup.current.rotation.z = currentRot.current.z + mouseRoll
