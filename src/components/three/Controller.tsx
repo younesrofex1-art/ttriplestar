@@ -24,11 +24,11 @@ const SCENE_KEYFRAMES: SceneKeyframe[] = [
   // Scene 1: TOURNAMENT — Turned inwards showing triggers and lightbar
   { position: [1.55, -0.1, -0.2], rotation: [-0.15, -0.85, 0.18], scale: 0.85 },
   // Scene 2: LIVE — Elevated, facing match stats
-  { position: [1.38, 0.15, 0.1], rotation: [0.35, 0.5, -0.12], scale: 0.92 },
-  // Scene 3: BRACKET — Tucked back so bracket is legible
-  { position: [1.75, -0.05, -0.6], rotation: [-0.2, -1.8, 0.25], scale: 0.65 },
-  // Scene 4: RESULTS — Victorious upward tilt
-  { position: [1.35, 0.18, 0.05], rotation: [0.22, 0.6, 0.1], scale: 0.98 },
+  { position: [1.45, 0.12, 0.08], rotation: [0.35, 0.5, -0.12], scale: 0.92 },
+  // Scene 3: BRACKET — Pushed right & scaled cleanly to leave bracket space open
+  { position: [2.10, 0.08, -0.35], rotation: [0.22, -0.60, 0.10], scale: 0.72 },
+  // Scene 4: RESULTS / ARCHIVE — Pushed further to the right side of podium
+  { position: [1.88, 0.12, 0.0], rotation: [0.28, 0.45, -0.08], scale: 0.94 },
 ]
 
 // Pre-calculated scale factor
