@@ -61,7 +61,7 @@ export function TournamentScene({
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-center px-6 md:px-14 lg:px-20 bg-transparent text-[#ededed] relative select-none overflow-hidden">
+    <div className="w-full h-full flex flex-col justify-center px-4 sm:px-6 md:px-14 lg:px-20 py-16 md:py-0 bg-transparent text-[#ededed] relative select-none overflow-hidden">
       <div className="max-w-5xl w-full z-10 mx-auto">
         {/* Header HUD */}
         <div className="mb-4 md:mb-6">

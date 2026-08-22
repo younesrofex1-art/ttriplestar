@@ -11,7 +11,7 @@ export function SystemScene({ onEnterSystem, onRegister }: SystemSceneProps) {
   const handleAction = onRegister || onEnterSystem
 
   return (
-    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] relative overflow-hidden select-none">
+    <div className="w-full h-full flex flex-col justify-center px-6 sm:px-8 md:px-16 lg:px-24 py-16 md:py-0 bg-transparent text-[#ededed] relative overflow-hidden select-none">
       {/* Background Ambient Radial Glow */}
       <div className="absolute -top-24 -left-24 w-[480px] h-[480px] bg-[#ff6600]/15 rounded-full blur-[120px] pointer-events-none" />
 

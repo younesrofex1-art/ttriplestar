@@ -15,37 +15,48 @@ export default function SmoothScrollProvider({
   const lenisRef = useRef<Lenis | null>(null)
 
   useEffect(() => {
+    const isMobile = window.innerWidth < 768
     const prefersReducedMotion = window.matchMedia(
       '(prefers-reduced-motion: reduce)'
     ).matches
 
+    // On mobile devices, use native smooth touch scrolling without Lenis touch hijacking
     const lenis = new Lenis({
-      duration: 0.8,
-      easing: (t) => 1 - Math.pow(1 - t, 3), // Smooth cubic ease-out
+      duration: isMobile ? 0.6 : 0.8,
+      easing: (t) => 1 - Math.pow(1 - t, 3),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
       smoothWheel: !prefersReducedMotion,
       wheelMultiplier: 1.0,
-      touchMultiplier: 1.2,
+      touchMultiplier: 0, // Disable touch hijacking for 100% native mobile inertia
+      syncTouch: false,
       infinite: false,
     })
 
     lenisRef.current = lenis
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(window as any).__lenis = lenis
 
-    // Sync Lenis scroll with ScrollTrigger
-    lenis.on('scroll', ScrollTrigger.update)
+    // Sync Lenis scroll with ScrollTrigger on desktop/tablet
+    if (!isMobile) {
+      lenis.on('scroll', ScrollTrigger.update)
+      const ticker = (time: number) => {
+        lenis.raf(time * 1000)
+      }
+      gsap.ticker.add(ticker)
+      gsap.ticker.lagSmoothing(500, 33)
 
-    // Run Lenis on GSAP ticker
-    const ticker = (time: number) => {
-      lenis.raf(time * 1000)
+      return () => {
+        gsap.ticker.remove(ticker)
+        lenis.destroy()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (window as any).__lenis
+      }
     }
-    gsap.ticker.add(ticker)
-    gsap.ticker.lagSmoothing(500, 33)
 
     return () => {
-      gsap.ticker.remove(ticker)
       lenis.destroy()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (window as any).__lenis
     }
   }, [])

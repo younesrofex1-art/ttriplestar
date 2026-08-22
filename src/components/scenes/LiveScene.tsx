@@ -192,10 +192,11 @@ export function LiveScene({
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-center items-end px-6 md:px-12 lg:px-20 xl:px-24 bg-transparent text-[#ededed] relative select-none">
-      <div className="relative z-10 max-w-xl lg:max-w-2xl xl:max-w-2xl w-full ml-auto">
+    <div className="w-full h-full flex flex-col justify-center items-center md:items-end px-4 sm:px-6 md:px-12 lg:px-20 xl:px-24 py-16 md:py-0 bg-transparent text-[#ededed] relative select-none">
+      <div className="relative z-10 max-w-xl lg:max-w-2xl xl:max-w-2xl w-full mx-auto md:ml-auto">
         {renderContent()}
       </div>
     </div>
   )
 }
+

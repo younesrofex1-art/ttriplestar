@@ -88,7 +88,7 @@ export function BracketScene({ tournament, matches, rounds, onNavigate }: Bracke
 
   if (!tournament || matches.length === 0) {
     return (
-      <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] select-none">
+      <div className="w-full h-full flex flex-col justify-center px-6 sm:px-8 md:px-16 lg:px-24 py-16 md:py-0 bg-transparent text-[#ededed] select-none">
         <div className="font-mono text-xs text-text-secondary uppercase tracking-[0.25em] mb-2">
           TOURNAMENT BRACKET
         </div>
@@ -103,7 +103,7 @@ export function BracketScene({ tournament, matches, rounds, onNavigate }: Bracke
   }
 
   return (
-    <div className="w-full h-full flex flex-col pt-24 pb-12 px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] select-none">
+    <div className="w-full h-full flex flex-col pt-20 sm:pt-24 pb-12 px-4 sm:px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] select-none">
       <div className="mb-6 shrink-0">
         <div className="font-mono text-xs text-accent tracking-widest uppercase mb-1">
           ELIMINATION BRACKET

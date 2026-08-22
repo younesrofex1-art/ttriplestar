@@ -50,7 +50,7 @@ export function ResultsScene({ tournament, matches, onNavigate }: ResultsScenePr
 
   if (!tournament || tournament.status !== 'COMPLETED' || !results) {
     return (
-      <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] select-none">
+      <div className="w-full h-full flex flex-col justify-center px-6 sm:px-8 md:px-16 lg:px-24 py-16 md:py-0 bg-transparent text-[#ededed] select-none">
         <div className="font-mono text-xs text-text-secondary tracking-[0.25em] uppercase mb-2">
           TOURNAMENT ARCHIVE
         </div>
@@ -67,7 +67,7 @@ export function ResultsScene({ tournament, matches, onNavigate }: ResultsScenePr
   const { winner, runnerUp, thirdPlace } = results
 
   return (
-    <div className="w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-24 bg-transparent text-[#ededed] relative select-none">
+    <div className="w-full h-full flex flex-col justify-center px-6 sm:px-8 md:px-16 lg:px-24 py-16 md:py-0 bg-transparent text-[#ededed] relative select-none">
       <div className="relative z-10 max-w-3xl w-full">
         <div className="font-mono text-accent tracking-[0.25em] uppercase mb-2 text-xs font-bold flex items-center gap-2">
           <span className="status-dot status-online" />
