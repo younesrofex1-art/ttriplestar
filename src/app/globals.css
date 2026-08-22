@@ -195,27 +195,26 @@ html.lenis, html.lenis body {
   border-color: var(--color-border-strong);
 }
 
-/* ─── Leaflet Cyberpunk Dark Theme ─────────────────────────────────── */
+/* ─── Leaflet Dark Theme ───────────────────────────────────────────── */
 
 .leaflet-container {
-  background-color: #09090d !important;
-  font-family: var(--font-mono);
+  background-color: #0e0e14 !important;
   outline: none;
 }
 
 .leaflet-popup-content-wrapper {
-  background: rgba(14, 14, 20, 0.95) !important;
+  background: rgba(18, 18, 24, 0.96) !important;
   backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 102, 0, 0.6) !important;
+  border: 1px solid rgba(255, 102, 0, 0.4) !important;
   border-radius: 12px !important;
-  box-shadow: 0 0 25px rgba(255, 102, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 102, 0, 0.15) !important;
   color: #ededed !important;
   padding: 4px !important;
 }
 
 .leaflet-popup-tip {
-  background: rgba(14, 14, 20, 0.95) !important;
-  border: 1px solid rgba(255, 102, 0, 0.6) !important;
+  background: rgba(18, 18, 24, 0.96) !important;
+  border: 1px solid rgba(255, 102, 0, 0.4) !important;
   border-top: none;
   border-left: none;
 }
@@ -225,12 +224,13 @@ html.lenis, html.lenis body {
   line-height: 1.4 !important;
 }
 
-.cyber-arena-marker {
+.arena-marker-custom, .cyber-arena-marker {
   background: transparent !important;
   border: none !important;
 }
 
 .leaflet-tile-pane {
-  filter: contrast(108%) brightness(96%);
+  filter: contrast(105%) brightness(95%);
 }
+
 
