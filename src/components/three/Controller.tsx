@@ -175,25 +175,28 @@ export default function Controller({
     rootGroup.current.getWorldPosition(worldPos)
     worldPos.project(state.camera)
 
-    const dx = mouse.current.x - worldPos.x
+    // Aspect ratio correction for accurate screen-space circular hit test
+    const aspect = state.viewport.aspect
+    const dx = (mouse.current.x - worldPos.x) * aspect
     const dy = mouse.current.y - worldPos.y
     const distToController = Math.hypot(dx, dy)
 
-    // Check if cursor is over or near the controller (works on left, center, or right)
-    const isNear =
-      distToController < 0.6 ||
-      (Math.abs(mouse.current.x - worldPos.x) < 0.45 && Math.abs(mouse.current.y - worldPos.y) < 0.5)
+    // Dynamic hit radius strictly proportional to the current model scale
+    const hitRadius = Math.max(0.14, 0.42 * currentScale.current)
+    const isOverModel = distToController < hitRadius
 
-    if (isNear !== isHoveredRef.current) {
-      isHoveredRef.current = isNear
-      onHoverChangeRef.current?.(isNear)
+    if (isOverModel !== isHoveredRef.current) {
+      isHoveredRef.current = isOverModel
+      onHoverChangeRef.current?.(isOverModel)
       if (!isDragging.current) {
-        document.body.style.cursor = isNear ? 'grab' : ''
+        document.body.style.cursor = isOverModel ? 'grab' : ''
       }
     }
 
-    const targetHover = isNear ? Math.min(1, Math.max(0, 1.1 - distToController / 0.55)) : 0
-    const hoverDampSpeed = 1 - Math.exp(-7 * delta)
+    const targetHover = isOverModel
+      ? Math.min(1, Math.max(0, 1.0 - (distToController / hitRadius) * 0.8))
+      : 0
+    const hoverDampSpeed = 1 - Math.exp(-8 * delta)
     hoverFactor.current += (targetHover - hoverFactor.current) * hoverDampSpeed
 
     // ─── 3. Drag Rotation Dampening ─────────────────────────────────────
@@ -204,25 +207,29 @@ export default function Controller({
     }
 
     // ─── 4. Smooth Damped Mouse & Interactive Hover Physics ─────────────
-    const mouseDampSpeed = 1 - Math.exp(-5.5 * delta)
-    smoothMouse.current.x += (mouse.current.x - smoothMouse.current.x) * mouseDampSpeed
-    smoothMouse.current.y += (mouse.current.y - smoothMouse.current.y) * mouseDampSpeed
+    // Mouse offset relative to the center of the model (only calculated when hovering)
+    const localMouseX = isHoveredRef.current ? (mouse.current.x - worldPos.x) * 2.2 : 0
+    const localMouseY = isHoveredRef.current ? (mouse.current.y - worldPos.y) * 2.2 : 0
 
-    // Floating wave (organically amplifies on hover)
-    const floatY = Math.sin(t * 1.3) * (0.04 + hoverFactor.current * 0.03)
-    const idleSpin = Math.sin(t * 0.4) * 0.05
+    const mouseDampSpeed = 1 - Math.exp(-6.5 * delta)
+    smoothMouse.current.x += (localMouseX - smoothMouse.current.x) * mouseDampSpeed
+    smoothMouse.current.y += (localMouseY - smoothMouse.current.y) * mouseDampSpeed
 
-    // Interactive 3D mouse tilt tracking (snappy & reactive)
-    const tiltStrength = 0.35 + hoverFactor.current * 0.35
+    // Floating wave (organically amplifies only on hover)
+    const floatY = Math.sin(t * 1.3) * (0.035 + hoverFactor.current * 0.025)
+    const idleSpin = Math.sin(t * 0.4) * 0.04
+
+    // Interactive 3D mouse tilt: ONLY active when hovering directly on top of the model
+    const tiltStrength = hoverFactor.current * 0.60
     const mousePitch = smoothMouse.current.y * tiltStrength
     const mouseYaw = smoothMouse.current.x * tiltStrength
-    const mouseRoll = -smoothMouse.current.x * (0.12 + hoverFactor.current * 0.12)
+    const mouseRoll = -smoothMouse.current.x * (hoverFactor.current * 0.15)
 
-    // Smooth hover depth and scale lift (+22% scale and forward lift)
-    const hoverScale = 1 + hoverFactor.current * 0.22
+    // Smooth hover depth and scale lift (+18% scale and forward lift)
+    const hoverScale = 1 + hoverFactor.current * 0.18
     motionGroup.current.scale.setScalar(hoverScale)
 
-    // Dynamic light surges
+    // Dynamic light surges (only brighten when hovered)
     if (rimLightRef.current) {
       rimLightRef.current.intensity = 5.5 + hoverFactor.current * 7.5
     }
@@ -232,7 +239,7 @@ export default function Controller({
 
     // Apply combined transformations
     motionGroup.current.position.y = floatY
-    motionGroup.current.position.z = hoverFactor.current * 0.35
+    motionGroup.current.position.z = hoverFactor.current * 0.30
     motionGroup.current.rotation.x = currentRot.current.x + mousePitch + dragRotation.current.x
     motionGroup.current.rotation.y = currentRot.current.y + idleSpin + mouseYaw + dragRotation.current.y
     motionGroup.current.rotation.z = currentRot.current.z + mouseRoll
