@@ -1,6 +1,23 @@
 'use client'
 
 import React, { useState } from 'react'
+import dynamic from 'next/dynamic'
+import { GOOGLE_MAPS_URL } from '@/components/map/ArenaMap'
+
+const ArenaMap = dynamic(() => import('@/components/map/ArenaMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[150px] rounded-xl bg-[#09090d] border border-border flex items-center justify-center font-mono text-[10px] text-[#ff6600]">
+      <span className="w-2 h-2 rounded-full bg-[#ff6600] animate-ping mr-2" />
+      LOADING ARENA RADAR...
+    </div>
+  ),
+})
+
+const TacticalMapModal = dynamic(
+  () => import('@/components/map/TacticalMapModal'),
+  { ssr: false }
+)
 
 interface ContactSceneProps {
   onNavigate?: (index: number) => void
@@ -10,6 +27,7 @@ export function ContactScene({ onNavigate }: ContactSceneProps) {
   const [formSent, setFormSent] = useState(false)
   const [formData, setFormData] = useState({ name: '', contact: '', message: '' })
   const [copied, setCopied] = useState<string | null>(null)
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
@@ -103,61 +121,73 @@ export function ContactScene({ onNavigate }: ContactSceneProps) {
 
         {/* 3-Column Responsive Cyber Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
-          {/* Column 1: Arena Location & Headquarters (4 cols) */}
+          {/* Column 1: Arena Location & Live Map (4 cols) */}
           <div className="lg:col-span-4 rounded-2xl bg-[#0e0e13]/85 border border-border-strong/80 hover:border-[#ff6600]/50 p-5 md:p-6 backdrop-blur-xl transition-all shadow-[0_0_20px_rgba(0,0,0,0.6)] flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <span className="font-mono text-[10px] text-[#ff6600] tracking-wider uppercase font-bold flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#ff6600] animate-pulse" />
                   PHYSICAL ARENA HQ
                 </span>
-                <span className="font-mono text-[9px] text-text-muted border border-border px-1.5 py-0.5 rounded">
-                  ZONE 01
+                <span className="font-mono text-[9px] text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded font-bold">
+                  ● OPERATIONAL
                 </span>
               </div>
 
-              <h3 className="font-display text-lg font-bold text-white mb-2">
-                TRIPLE STARS ESPORTS ARENA
-              </h3>
-
-              <div className="space-y-3 font-mono text-xs text-text-secondary mb-5">
-                <div className="flex items-start gap-2.5">
-                  <span className="text-[#ff6600] text-sm">📍</span>
-                  <div>
-                    <div className="text-white font-medium">Boulevard Hassan II</div>
-                    <div className="text-[11px] text-text-muted">Gaming & Tournament Complex, Agadir</div>
-                  </div>
+              <div className="mb-2">
+                <h3 className="font-display text-lg font-bold text-white leading-tight">
+                  TRIPLE STARS ESPORTS ARENA
+                </h3>
+                <div className="flex items-center gap-1 text-[11px] font-mono text-text-secondary mt-0.5">
+                  <span className="text-[#ff6600]">📍</span>
+                  <span>Boulevard Hassan II • Gaming Complex</span>
                 </div>
+              </div>
 
-                <div className="flex items-start gap-2.5">
-                  <span className="text-[#ff6600] text-sm">⏱</span>
-                  <div>
-                    <div className="text-white font-medium">Open Daily: 10:00 AM – 02:00 AM</div>
-                    <div className="text-[11px] text-[#ff6600]/90">Non-stop tournament weekends</div>
-                  </div>
+              {/* Real Interactive Cyber Map */}
+              <div className="my-3">
+                <ArenaMap
+                  height="145px"
+                  initialZoom={17}
+                  showControls={true}
+                  onExpand={() => setIsMapModalOpen(true)}
+                />
+              </div>
+
+              {/* Key Arena Specs Grid */}
+              <div className="grid grid-cols-2 gap-2 font-mono text-[11px] mb-3">
+                <div className="p-2 rounded-xl bg-[#14141a] border border-border/80">
+                  <span className="text-[9px] text-text-muted uppercase block mb-0.5">SCHEDULE</span>
+                  <span className="text-white font-medium">10:00 AM – 02:00 AM</span>
                 </div>
-
-                <div className="flex items-start gap-2.5">
-                  <span className="text-[#ff6600] text-sm">⚡</span>
-                  <div>
-                    <div className="text-white font-medium">Specs & Equipment</div>
-                    <div className="text-[11px] text-text-muted">
-                      240Hz Rigs • PS5 Pro Stations • 1Gbps Fiber
-                    </div>
-                  </div>
+                <div className="p-2 rounded-xl bg-[#14141a] border border-border/80">
+                  <span className="text-[9px] text-text-muted uppercase block mb-0.5">EQUIPMENT</span>
+                  <span className="text-[#ff6600] font-medium">240Hz • PS5 Pro</span>
                 </div>
               </div>
             </div>
 
-            <a
-              href="https://maps.google.com/?q=Agadir+Morocco"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-mono text-xs font-bold text-black bg-[#ff6600] hover:bg-[#ff7711] shadow-[0_0_15px_rgba(255,102,0,0.4)] hover:shadow-[0_0_25px_rgba(255,102,0,0.7)] transition-all"
-            >
-              <span>📍 OPEN IN GOOGLE MAPS</span>
-              <span className="text-xs">↗</span>
-            </a>
+            <div className="flex items-center gap-2 pt-1">
+              <a
+                href={GOOGLE_MAPS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-mono text-xs font-bold text-black bg-[#ff6600] hover:bg-[#ff7711] shadow-[0_0_15px_rgba(255,102,0,0.4)] hover:shadow-[0_0_25px_rgba(255,102,0,0.7)] transition-all text-center"
+              >
+                <span>📍 OPEN IN GOOGLE MAPS</span>
+                <span className="text-xs">↗</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setIsMapModalOpen(true)}
+                title="Expand Tactical Radar View"
+                aria-label="Expand Tactical Radar View"
+                className="py-2.5 px-3 rounded-xl font-mono text-xs font-bold text-zinc-300 hover:text-white bg-[#14141a] hover:bg-[#1f1f28] border border-border hover:border-[#ff6600]/60 transition-all flex items-center justify-center"
+              >
+                <span>⛶</span>
+              </button>
+            </div>
           </div>
 
           {/* Column 2: Direct Comms & Fast Contact Form (4 cols) */}
@@ -303,6 +333,13 @@ export function ContactScene({ onNavigate }: ContactSceneProps) {
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Interactive Tactical Map Modal */}
+      <TacticalMapModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+      />
     </div>
   )
 }
+

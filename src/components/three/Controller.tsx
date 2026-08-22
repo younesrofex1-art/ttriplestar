@@ -30,8 +30,8 @@ const SCENE_KEYFRAMES: SceneKeyframe[] = [
   { position: [2.25, -0.45, 0.0], rotation: [0.15, -0.50, 0.10], scale: 0.78 },
   // Scene 4: RESULTS — Victorious upward tilt beside the podium
   { position: [1.35, 0.08, 0.05], rotation: [0.25, -0.45, -0.05], scale: 0.88 },
-  // Scene 5: CONNECT — Cyber tilted pose beside location & comms cards
-  { position: [1.30, -0.05, 0.05], rotation: [0.30, -0.65, 0.12], scale: 0.85 },
+  // Scene 5: CONNECT / CONTACT — Pushed to the exact same bottom-right corner as tournament scene
+  { position: [3.45, -1.65, 0.0], rotation: [-0.08, -0.60, 0.15], scale: 0.30 },
 ]
 
 // Pre-calculated scale factor
