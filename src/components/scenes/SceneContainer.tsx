@@ -136,12 +136,12 @@ export default function SceneContainer({
 
       if (lenis) {
         lenis.scrollTo(targetY, {
-          duration: 0.9,
+          duration: 0.75,
           onComplete: () => {
             setTimeout(() => {
               isAnimating = false
               accumulatedDelta = 0
-            }, 100)
+            }, 80)
           },
         })
       } else {
@@ -149,7 +149,7 @@ export default function SceneContainer({
         setTimeout(() => {
           isAnimating = false
           accumulatedDelta = 0
-        }, 700)
+        }, 550)
       }
     }
 

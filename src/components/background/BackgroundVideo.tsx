@@ -1,21 +1,40 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 
 export default function BackgroundVideo() {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Pause video rendering when tab is inactive to free up CPU & GPU
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!videoRef.current) return
+      if (document.hidden) {
+        videoRef.current.pause()
+      } else {
+        videoRef.current.play().catch(() => {})
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   return (
     <div
-      className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none"
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none gpu-accelerated"
       aria-hidden="true"
+      style={{ transform: 'translate3d(0,0,0)' }}
     >
       {/* Background Video */}
       <video
+        ref={videoRef}
         autoPlay
         loop
         muted
         playsInline
-        preload="auto"
-        className="w-full h-full object-cover scale-105 brightness-75 contrast-110"
+        preload="metadata"
+        className="w-full h-full object-cover scale-105 brightness-75 contrast-110 will-change-transform"
       >
         <source src="/background.mp4" type="video/mp4" />
       </video>

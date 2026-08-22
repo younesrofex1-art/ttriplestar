@@ -28,6 +28,7 @@ export default function ArenaMap({
 
   useEffect(() => {
     let isMounted = true
+    let observer: IntersectionObserver | null = null
 
     const initMap = async () => {
       if (!mapContainerRef.current) return
@@ -119,10 +120,22 @@ export default function ArenaMap({
       }, 150)
     }
 
-    initMap()
+    if (mapContainerRef.current) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            initMap()
+            observer?.disconnect()
+          }
+        },
+        { rootMargin: '300px' }
+      )
+      observer.observe(mapContainerRef.current)
+    }
 
     return () => {
       isMounted = false
+      observer?.disconnect()
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null

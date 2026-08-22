@@ -64,6 +64,7 @@ export default function Controller({
   const currentPos = useRef(new THREE.Vector3(...SCENE_KEYFRAMES[0].position))
   const currentRot = useRef(new THREE.Euler(...SCENE_KEYFRAMES[0].rotation))
   const currentScale = useRef(SCENE_KEYFRAMES[0].scale * MODEL_BASE_SCALE)
+  const tempWorldPos = useRef(new THREE.Vector3())
 
   useEffect(() => {
     onHoverChangeRef.current = onHoverChange
@@ -187,7 +188,7 @@ export default function Controller({
     }
 
     // ─── 2. Accurate 3D Screen Proximity & Hover Detection ──────────────
-    const worldPos = new THREE.Vector3()
+    const worldPos = tempWorldPos.current
     rootGroup.current.getWorldPosition(worldPos)
     worldPos.project(state.camera)
 

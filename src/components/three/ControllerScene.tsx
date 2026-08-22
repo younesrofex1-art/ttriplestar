@@ -43,17 +43,15 @@ export default function ControllerScene({
       >
         <AdaptiveDpr pixelated />
 
-        {/* Ambient base lighting */}
-        <ambientLight intensity={0.9} />
+        {/* High-performance local studio lighting without remote HDR network delay */}
+        <ambientLight intensity={1.1} color="#ffffff" />
+        <hemisphereLight intensity={0.9} color="#ffffff" groundColor="#1a1a24" />
 
         {/* Key Light — crisp directional illumination */}
-        <directionalLight position={[5, 6, 4]} intensity={2.2} color="#ffffff" />
+        <directionalLight position={[5, 6, 4]} intensity={2.4} color="#ffffff" />
 
-        {/* Fill Light — warm fill */}
-        <directionalLight position={[-4, 2, 3]} intensity={1.0} color="#ffd4aa" />
-
-        {/* Environment reflections */}
-        <Environment preset="night" environmentIntensity={0.6} />
+        {/* Fill Light — warm specular fill */}
+        <directionalLight position={[-4, 2, 3]} intensity={1.2} color="#ffd4aa" />
 
         {/* 3D Controller with continuous scroll interpolation & interactive 3D physics */}
         <Suspense fallback={null}>
