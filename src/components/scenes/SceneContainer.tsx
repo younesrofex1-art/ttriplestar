@@ -41,7 +41,49 @@ export default function SceneContainer({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Desktop horizontal translation driven by CSS sticky + GSAP scrub + Section Snapping
+  // Mobile: Vertical Top-to-Bottom Scrolling & Active Scene Intersection Tracking
+  useEffect(() => {
+    if (!isMobile) return
+
+    const observerOptions = {
+      root: null,
+      rootMargin: '-20% 0px -20% 0px',
+      threshold: 0.25,
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const sceneIndex = SCENES.findIndex((s) => s.id === entry.target.id)
+          if (sceneIndex !== -1) {
+            onSceneChangeRef.current?.(sceneIndex)
+          }
+        }
+      })
+    }, observerOptions)
+
+    SCENES.forEach((scene) => {
+      const el = document.getElementById(scene.id)
+      if (el) observer.observe(el)
+    })
+
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight
+      if (totalHeight > 0) {
+        const progress = Math.min(1, Math.max(0, window.scrollY / totalHeight))
+        onScrollProgressRef.current?.(progress)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [isMobile])
+
+  // Desktop & Tablet (>= 768px): Horizontal translation driven by CSS sticky + GSAP scrub + Section Snapping
   useEffect(() => {
     if (isMobile || !trackRef.current || !scrollWrapperRef.current) return
 
@@ -113,7 +155,6 @@ export default function SceneContainer({
 
     // Wheel listener for snappy, one-section-per-scroll feel
     const handleWheel = (e: WheelEvent) => {
-      // Allow scrolling inside dialogs/modals
       const target = e.target as HTMLElement | null
       if (target) {
         const dialog = target.closest('[role="dialog"]')
@@ -155,7 +196,6 @@ export default function SceneContainer({
         accumulatedDelta = 0
       }, 200)
 
-      // Threshold to trigger section move
       if (Math.abs(accumulatedDelta) < 35) return
 
       const trigger = ScrollTrigger.getById('horizontal-scroll')
@@ -176,7 +216,7 @@ export default function SceneContainer({
       }
     }
 
-    // Touch swipe gestures
+    // Touch swipe gestures on tablet horizontal
     let touchStartY = 0
     let touchStartX = 0
 
@@ -246,16 +286,16 @@ export default function SceneContainer({
     }
   }, [isMobile])
 
-  // Mobile: vertical layout with native scroll snapping
+  // Mobile: vertical layout with top-and-bottom scroll snapping
   if (isMobile) {
     return (
       <div className="w-full">
-        <div className="flex flex-col snap-y snap-mandatory">{children}</div>
+        <div className="flex flex-col snap-y snap-mandatory w-full">{children}</div>
       </div>
     )
   }
 
-  // Desktop: CSS Sticky container with horizontal translation track
+  // Desktop & Tablets: CSS Sticky container with horizontal translation track
   return (
     <div
       ref={scrollWrapperRef}
@@ -287,11 +327,10 @@ export function ScenePanel({ id, children, className = '' }: ScenePanelProps) {
   return (
     <div
       id={id}
-      className={`relative w-screen h-screen flex-shrink-0 overflow-hidden snap-start ${className}`}
+      className={`relative w-full md:w-screen min-h-[100dvh] md:h-screen md:flex-shrink-0 snap-start overflow-x-hidden md:overflow-hidden ${className}`}
       aria-label={`${id} scene`}
     >
       {children}
     </div>
   )
 }
-

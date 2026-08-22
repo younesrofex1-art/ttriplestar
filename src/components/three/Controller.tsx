@@ -52,6 +52,8 @@ export default function Controller({
   const smoothMouse = useRef({ x: 0, y: 0 })
   const isHoveredRef = useRef(false)
   const hoverFactor = useRef(0)
+  const leftFlash = useRef(0)
+  const rightFlash = useRef(0)
   const onHoverChangeRef = useRef(onHoverChange)
 
   // Interactive Drag-to-Rotate support
@@ -67,7 +69,7 @@ export default function Controller({
     onHoverChangeRef.current = onHoverChange
   }, [onHoverChange])
 
-  // Track global mouse position & drag events
+  // Track global mouse position, keyboard arrows & drag events
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     prefersReducedMotion.current = mq.matches
@@ -76,6 +78,18 @@ export default function Controller({
       prefersReducedMotion.current = e.matches
     }
     mq.addEventListener('change', mqListener)
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore key events when user is typing in inputs or textareas
+      const target = e.target as HTMLElement | null
+      if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return
+
+      if (['ArrowLeft', 'ArrowUp', 'a', 'A'].includes(e.key)) {
+        leftFlash.current = 1.0
+      } else if (['ArrowRight', 'ArrowDown', 'd', 'D'].includes(e.key)) {
+        rightFlash.current = 1.0
+      }
+    }
 
     const handleMouseMove = (e: MouseEvent) => {
       const nx = (e.clientX / window.innerWidth) * 2 - 1
@@ -110,6 +124,7 @@ export default function Controller({
       }
     }
 
+    window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('mousemove', handleMouseMove, { passive: true })
     window.addEventListener('mousedown', handleMouseDown)
     window.addEventListener('mouseup', handleMouseUp)
@@ -117,6 +132,7 @@ export default function Controller({
     return () => {
       document.body.style.cursor = ''
       mq.removeEventListener('change', mqListener)
+      window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mousedown', handleMouseDown)
       window.removeEventListener('mouseup', handleMouseUp)
@@ -199,6 +215,11 @@ export default function Controller({
     const hoverDampSpeed = 1 - Math.exp(-8 * delta)
     hoverFactor.current += (targetHover - hoverFactor.current) * hoverDampSpeed
 
+    // Decay keyboard arrow flashes exponentially (~250ms decay)
+    const flashDecay = Math.exp(-9.0 * delta)
+    leftFlash.current *= flashDecay
+    rightFlash.current *= flashDecay
+
     // ─── 3. Drag Rotation Dampening ─────────────────────────────────────
     if (!isDragging.current) {
       const dragDecay = Math.exp(-3.5 * delta)
@@ -219,27 +240,35 @@ export default function Controller({
     const floatY = Math.sin(t * 1.3) * (0.035 + hoverFactor.current * 0.025)
     const idleSpin = Math.sin(t * 0.4) * 0.04
 
+    // Dynamic keyboard arrow haptic nudge
+    const keyNudgeRoll = (rightFlash.current - leftFlash.current) * 0.09
+    const keyNudgePitch = -(leftFlash.current + rightFlash.current) * 0.06
+
     // Interactive 3D mouse tilt: ONLY active when hovering directly on top of the model
     const tiltStrength = hoverFactor.current * 0.60
-    const mousePitch = smoothMouse.current.y * tiltStrength
+    const mousePitch = smoothMouse.current.y * tiltStrength + keyNudgePitch
     const mouseYaw = smoothMouse.current.x * tiltStrength
-    const mouseRoll = -smoothMouse.current.x * (hoverFactor.current * 0.15)
+    const mouseRoll = -smoothMouse.current.x * (hoverFactor.current * 0.15) + keyNudgeRoll
 
     // Smooth hover depth and scale lift (+18% scale and forward lift)
-    const hoverScale = 1 + hoverFactor.current * 0.18
+    const hoverScale = 1 + hoverFactor.current * 0.18 + (leftFlash.current + rightFlash.current) * 0.05
     motionGroup.current.scale.setScalar(hoverScale)
 
-    // Dynamic light surges (only brighten when hovered)
+    // Dynamic reactive lights: surge on hover and flash intensely on arrow keys
     if (rimLightRef.current) {
-      rimLightRef.current.intensity = 5.5 + hoverFactor.current * 7.5
+      const leftSurge = leftFlash.current * 28.0
+      rimLightRef.current.intensity = 5.5 + hoverFactor.current * 7.5 + leftSurge
+      rimLightRef.current.color.set(leftFlash.current > 0.05 ? '#ff4400' : '#ff6600')
     }
     if (fillLightRef.current) {
-      fillLightRef.current.intensity = 4.0 + hoverFactor.current * 5.0
+      const rightSurge = rightFlash.current * 28.0
+      fillLightRef.current.intensity = 4.0 + hoverFactor.current * 5.0 + rightSurge
+      fillLightRef.current.color.set(rightFlash.current > 0.05 ? '#ff4400' : '#ff9900')
     }
 
     // Apply combined transformations
     motionGroup.current.position.y = floatY
-    motionGroup.current.position.z = hoverFactor.current * 0.30
+    motionGroup.current.position.z = hoverFactor.current * 0.30 + (leftFlash.current + rightFlash.current) * 0.1
     motionGroup.current.rotation.x = currentRot.current.x + mousePitch + dragRotation.current.x
     motionGroup.current.rotation.y = currentRot.current.y + idleSpin + mouseYaw + dragRotation.current.y
     motionGroup.current.rotation.z = currentRot.current.z + mouseRoll
@@ -247,12 +276,17 @@ export default function Controller({
 
   return (
     <group ref={rootGroup}>
-      {/* Dynamic reactive lights tied to hover */}
+      {/* Dynamic reactive lights tied to hover & keyboard flashes */}
       <pointLight ref={rimLightRef} position={[-3, -2, -1]} intensity={5.5} color="#ff6600" distance={12} />
       <pointLight ref={fillLightRef} position={[3, 3, -1]} intensity={4.0} color="#ff9900" distance={12} />
 
       <group ref={motionGroup}>
-        <ControllerModel hoverFactor={hoverFactor.current} onLoaded={onLoaded} />
+        <ControllerModel
+          hoverFactor={hoverFactor.current}
+          leftFlash={leftFlash.current}
+          rightFlash={rightFlash.current}
+          onLoaded={onLoaded}
+        />
       </group>
     </group>
   )
