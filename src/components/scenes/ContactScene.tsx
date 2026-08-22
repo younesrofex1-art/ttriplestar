@@ -54,18 +54,10 @@ export function ContactScene({ onNavigate }: ContactSceneProps) {
 
       <div className="max-w-6xl w-full z-10 mx-auto">
         {/* Section Header */}
-        <div className="mb-5 md:mb-6">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="font-mono text-xs text-[#ff6600] font-semibold tracking-wider uppercase bg-[#ff6600]/10 border border-[#ff6600]/30 px-2.5 py-0.5 rounded-full">
-              Location & Contact
-            </span>
-          </div>
+        <div className="mb-4 md:mb-5">
           <h2 className="font-display text-2xl md:text-4xl font-extrabold text-white tracking-tight">
             VISIT OUR <span className="text-[#ff6600] drop-shadow-[0_0_20px_rgba(255,102,0,0.4)]">ARENA</span>
           </h2>
-          <p className="text-xs md:text-sm text-zinc-400 mt-1 max-w-lg">
-            Located in Laâyoune. Drop in to play, compete in upcoming tournaments, or reach out to our team directly.
-          </p>
         </div>
 
         {/* 2-Column Spacious Layout */}
@@ -98,7 +90,7 @@ export function ContactScene({ onNavigate }: ContactSceneProps) {
             </div>
 
             {/* Large Interactive Map Canvas */}
-            <div className="flex-1 min-h-[280px] md:min-h-[320px] rounded-xl overflow-hidden">
+            <div className="flex-1 min-h-[300px] md:min-h-[360px] rounded-xl overflow-hidden">
               <ArenaMap height="100%" initialZoom={17} />
             </div>
           </div>
