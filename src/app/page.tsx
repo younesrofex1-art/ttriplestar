@@ -138,7 +138,7 @@ export default function HomePage() {
         {/* Scene 03 — Live */}
         <ScenePanel id="live">
           <LiveScene
-            tournament={publicState === 'LIVE' ? tournament : null}
+            tournament={tournament}
             liveMatch={liveMatch}
             liveStream={liveStream}
             onNavigate={navigateToScene}
