@@ -24,8 +24,8 @@ const SCENE_KEYFRAMES: SceneKeyframe[] = [
   { position: [1.25, -0.05, 0], rotation: [0.35, -0.45, 0.08], scale: 0.95 },
   // Scene 1: TOURNAMENT — Pushed to the far bottom-right corner (compact scale)
   { position: [3.45, -1.65, 0.0], rotation: [-0.08, -0.60, 0.15], scale: 0.30 },
-  // Scene 2: LIVE — Framed on the right side beside the broadcast active HUD
-  { position: [1.35, -0.05, 0.0], rotation: [0.30, -0.45, 0.08], scale: 0.88 },
+  // Scene 2: LIVE — Pushed to the far LEFT edge so it stays completely clear of the right-side card
+  { position: [-2.55, -0.05, 0.0], rotation: [0.28, 0.52, -0.08], scale: 0.82 },
   // Scene 3: BRACKET — Framed on the right side of the bracket tree
   { position: [2.25, -0.45, 0.0], rotation: [0.15, -0.50, 0.10], scale: 0.78 },
   // Scene 4: RESULTS — Victorious upward tilt beside the podium
