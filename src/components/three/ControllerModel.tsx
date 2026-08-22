@@ -5,7 +5,9 @@ import React, { useEffect, useMemo, useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 
-const MODEL_URL = process.env.NEXT_PUBLIC_MODEL_URL || '/models/controller.glb'
+const MODEL_URL =
+  process.env.NEXT_PUBLIC_MODEL_URL ||
+  'https://res.cloudinary.com/d6tvoend/raw/upload/v1787358459/controller.glb'
 
 export interface ControllerModelProps extends React.ComponentPropsWithoutRef<'group'> {
   hoverFactor?: number
@@ -25,6 +27,11 @@ export function ControllerModel({
   const { scene } = useGLTF(MODEL_URL, true)
   const emissiveMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([])
   const buttonMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([])
+
+  const customUniforms = useRef({
+    uLeftFlash: { value: 0 },
+    uRightFlash: { value: 0 },
+  })
 
   // Compute bounding box and normalization factor once
   const { scaleFactor } = useMemo(() => {
@@ -77,8 +84,50 @@ export function ControllerModel({
           } else if (mat.name === '1001' || mesh.name.includes('14')) {
             mat.roughness = 0.45
             mat.metalness = 0.25
-            mat.emissive = new THREE.Color('#ff6600')
-            mat.emissiveIntensity = 0.0
+            mat.emissive = new THREE.Color('#000000')
+            mat.emissiveIntensity = 1.0
+
+            // Shader extension to illuminate ONLY the left D-pad or right buttons based on which key is pressed
+            mat.onBeforeCompile = (shader) => {
+              shader.uniforms.uLeftFlash = customUniforms.current.uLeftFlash
+              shader.uniforms.uRightFlash = customUniforms.current.uRightFlash
+
+              shader.vertexShader = `
+                varying vec3 vButtonLocalPos;
+                ${shader.vertexShader}
+              `.replace(
+                '#include <begin_vertex>',
+                `
+                #include <begin_vertex>
+                vButtonLocalPos = position;
+                `
+              )
+
+              shader.fragmentShader = `
+                uniform float uLeftFlash;
+                uniform float uRightFlash;
+                varying vec3 vButtonLocalPos;
+                ${shader.fragmentShader}
+              `.replace(
+                '#include <emissivemap_fragment>',
+                `
+                #include <emissivemap_fragment>
+                
+                // Left D-Pad Arrow (strictly left side: x < -0.15)
+                if (vButtonLocalPos.x < -0.15 && vButtonLocalPos.y > -0.15) {
+                  float w = smoothstep(-0.15, -0.35, vButtonLocalPos.x);
+                  totalEmissiveRadiance += vec3(1.0, 0.40, 0.0) * uLeftFlash * 7.5 * w;
+                }
+                
+                // Right Action Arrow / Buttons (strictly right side: x > 0.15)
+                if (vButtonLocalPos.x > 0.15 && vButtonLocalPos.y > -0.15) {
+                  float w = smoothstep(0.15, 0.35, vButtonLocalPos.x);
+                  totalEmissiveRadiance += vec3(1.0, 0.40, 0.0) * uRightFlash * 7.5 * w;
+                }
+                `
+              )
+            }
+
             buttonMats.push(mat)
           } else {
             mat.roughness = 0.35
@@ -99,20 +148,15 @@ export function ControllerModel({
   useFrame((state) => {
     const t = state.clock.elapsedTime
     const pulse = Math.sin(t * 4) * 0.3 * hoverFactor
-    const flashTotal = leftFlash + rightFlash
-    const flashBoost = flashTotal * 4.5
-    const targetIntensity = 1.2 + hoverFactor * 2.8 + pulse + flashBoost
+    const targetIntensity = 1.2 + hoverFactor * 2.8 + pulse
+
+    // Pass real-time flash values to custom button shader
+    customUniforms.current.uLeftFlash.value = leftFlash
+    customUniforms.current.uRightFlash.value = rightFlash
 
     if (emissiveMaterialsRef.current.length > 0) {
       emissiveMaterialsRef.current.forEach((mat) => {
         mat.emissiveIntensity = targetIntensity
-      })
-    }
-
-    if (buttonMaterialsRef.current.length > 0) {
-      const buttonGlow = flashTotal * 5.0
-      buttonMaterialsRef.current.forEach((mat) => {
-        mat.emissiveIntensity = buttonGlow
       })
     }
   })
